@@ -2,11 +2,11 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { BackIcon, TrendIcon } from '@/components/AppIcons';
+import { TrendIcon } from '@/components/AppIcons';
+import { BackBar } from '@/components/BackBar';
 import { Card } from '@/components/Card';
 import { EmptyState } from '@/components/EmptyState';
 import { ExerciseIcon } from '@/components/ExerciseIcon';
-import { IconButton } from '@/components/IconButton';
 import { LineChart } from '@/components/LineChart';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
@@ -54,11 +54,7 @@ export default function ExerciseDetailScreen() {
   if (history.length === 0) {
     return (
       <Screen>
-        <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-          <IconButton onPress={() => router.back()}>
-            <BackIcon size={18} color={colors.text} />
-          </IconButton>
-        </View>
+        <BackBar />
         <View style={styles.hero}>
           <ExerciseIcon icon={ex.icon} color={ex.color} size="lg" />
           <View style={{ flex: 1 }}>
@@ -87,15 +83,13 @@ export default function ExerciseDetailScreen() {
 
   return (
     <Screen>
-      <View style={{ paddingHorizontal: 16, paddingTop: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <IconButton onPress={() => router.back()}>
-          <BackIcon size={18} color={colors.text} />
-        </IconButton>
-        <Text variant="caption" style={{ fontWeight: '600' }}>
-          Levantamiento
-        </Text>
-        <View style={{ width: 44 }} />
-      </View>
+      <BackBar
+        right={
+          <Text variant="caption" style={{ fontWeight: '600', minWidth: 100, textAlign: 'right' }}>
+            Levantamiento
+          </Text>
+        }
+      />
 
       {/* Hero */}
       <View style={styles.hero}>

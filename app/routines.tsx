@@ -2,7 +2,8 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { BackIcon, ChevronIcon, PlusIcon } from '@/components/AppIcons';
+import { ChevronIcon, PlusIcon } from '@/components/AppIcons';
+import { BackBar } from '@/components/BackBar';
 import { Button } from '@/components/Button';
 import { Header } from '@/components/Header';
 import { IconButton } from '@/components/IconButton';
@@ -42,14 +43,11 @@ export default function RoutinesListScreen() {
 
   return (
     <Screen>
-      <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-        <IconButton onPress={() => router.back()}>
-          <BackIcon size={18} color={colors.text} />
-        </IconButton>
-      </View>
+      <BackBar />
       <Header
         eyebrow="Plantillas semanales"
         title="Rutinas"
+        style={{ paddingTop: 8 }}
         right={
           <IconButton variant="primary" size={44} onPress={() => router.push('/routine-editor')}>
             <PlusIcon size={20} color={colors.bg} />

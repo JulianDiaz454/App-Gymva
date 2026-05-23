@@ -1,6 +1,7 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Dimensions, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CheckIcon, ChevronIcon, ClockIcon, CloseIcon } from '@/components/AppIcons';
 import { Card } from '@/components/Card';
@@ -290,6 +291,7 @@ export default function CalendarTab() {
       >
         <Pressable style={styles.scrim} onPress={() => setAssignSheet(null)}>
           <Pressable style={styles.sheet} onPress={() => undefined}>
+            <SafeAreaView edges={['bottom']} style={{ flex: 1 }}>
             <View style={styles.sheetHandle} />
             <View style={styles.sheetHeader}>
               <View>
@@ -300,7 +302,7 @@ export default function CalendarTab() {
                 <CloseIcon size={16} color={colors.textSec} />
               </IconButton>
             </View>
-            <ScrollView style={{ maxHeight: 360 }} contentContainerStyle={{ paddingHorizontal: space.xl, paddingBottom: 28, gap: 8 }}>
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: space.xl, paddingBottom: 28, gap: 8 }}>
               {assignSheet && weekMap.has(assignSheet) ? (
                 <Pressable onPress={() => assignRoutineToWeek(null)} style={styles.removeBtn}>
                   <Text variant="caption" tone="secondary" style={{ fontWeight: '600' }}>
@@ -339,6 +341,7 @@ export default function CalendarTab() {
                 </Text>
               ) : null}
             </ScrollView>
+            </SafeAreaView>
           </Pressable>
         </Pressable>
       </Modal>
@@ -649,6 +652,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopColor: colors.border,
     borderTopWidth: 1,
+    maxHeight: Dimensions.get('window').height * 0.85,
   },
   sheetHandle: {
     width: 36,

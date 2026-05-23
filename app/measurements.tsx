@@ -248,7 +248,7 @@ export default function MeasurementsScreen() {
       {/* Configure modal */}
       <Modal visible={configOpen} transparent animationType="slide" onRequestClose={() => setConfigOpen(false)}>
         <Pressable style={styles.scrim} onPress={() => setConfigOpen(false)}>
-          <Pressable style={styles.sheet} onPress={() => undefined}>
+          <Pressable style={[styles.sheet, styles.sheetTall]} onPress={() => undefined}>
             <ConfigureForm
               types={types}
               onClose={() => setConfigOpen(false)}
@@ -354,7 +354,7 @@ function ConfigureForm({
   };
 
   return (
-    <SafeAreaView edges={['bottom']} style={{ maxHeight: '88%' }}>
+    <SafeAreaView edges={['bottom']} style={{ flex: 1 }}>
       <View style={styles.sheetHandle} />
       <View style={styles.sheetHeader}>
         <View>
@@ -365,7 +365,7 @@ function ConfigureForm({
           <CloseIcon size={16} color={colors.textSec} />
         </IconButton>
       </View>
-      <ScrollView style={{ maxHeight: 460 }} contentContainerStyle={{ padding: space.xl }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: space.xl, paddingBottom: 32 }}>
         {types.map((t) => (
           <View
             key={t.id}
@@ -545,6 +545,11 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+  },
+  sheetTall: {
+    // Para sheets con contenido scrolleable. height fijo: garantiza que el
+    // ScrollView interno (flex:1) tenga un padre con altura real definida.
+    height: '92%',
   },
   sheetHandle: {
     width: 36,

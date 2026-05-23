@@ -132,7 +132,10 @@ export default function TodayScreen() {
         <Button
           label={allDone ? 'Ver resumen' : done > 0 ? 'Continuar entrenamiento' : 'Iniciar entrenamiento'}
           fullWidth
-          onPress={() => startSession(blocks.findIndex((b) => !completedByExercise.has(b.exerciseId)) === -1 ? 0 : blocks.findIndex((b) => !completedByExercise.has(b.exerciseId)))}
+          onPress={() => {
+            const idx = blocks.findIndex((b) => !completedByExercise.has(b.exerciseId));
+            startSession(idx === -1 ? 0 : idx);
+          }}
           rightIcon={<ChevronIcon size={14} color={colors.bg} dir="right" />}
         />
       </View>

@@ -8,7 +8,8 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
 
-import { BackIcon, PlusIcon, TrashIcon } from '@/components/AppIcons';
+import { PlusIcon, TrashIcon } from '@/components/AppIcons';
+import { BackBar } from '@/components/BackBar';
 import { EmptyState } from '@/components/EmptyState';
 import { Header } from '@/components/Header';
 import { IconButton } from '@/components/IconButton';
@@ -67,14 +68,11 @@ export default function PhotosScreen() {
 
   return (
     <Screen scroll={false}>
-      <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-        <IconButton onPress={() => router.back()}>
-          <BackIcon size={18} color={colors.text} />
-        </IconButton>
-      </View>
+      <BackBar />
       <Header
         eyebrow="Galería"
         title="Fotos de progreso"
+        style={{ paddingTop: 8 }}
         right={
           <IconButton variant="primary" size={44} onPress={onPick}>
             <PlusIcon size={20} color={colors.bg} />

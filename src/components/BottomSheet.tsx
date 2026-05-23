@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Dimensions, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CloseIcon } from '@/components/AppIcons';
@@ -13,14 +13,35 @@ interface Props {
   title?: string;
   eyebrow?: string;
   children: ReactNode;
+  /**
+   * Si true, la sheet ocupa ~90% del viewport para acoger contenido scrolleable
+   * (selectores largos). Si false (default), crece con el contenido y se topa
+   * con maxHeight 88%.
+   */
+  tall?: boolean;
+  /** Padding horizontal del contenido. Por defecto se aplica space.xl; pasar 0 para que el children gestione su propio padding (útil con ScrollView interno). */
+  contentPadding?: number;
 }
 
-export function BottomSheet({ visible, onClose, title, eyebrow, children }: Props) {
+export function BottomSheet({
+  visible,
+  onClose,
+  title,
+  eyebrow,
+  children,
+  tall = false,
+  contentPadding,
+}: Props) {
+  const screenH = Dimensions.get('window').height;
+  const sheetStyle = tall
+    ? { height: screenH * 0.9 }
+    : { maxHeight: screenH * 0.88 };
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.scrim} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={() => undefined}>
-          <SafeAreaView edges={['bottom']}>
+        <Pressable style={[styles.sheet, sheetStyle]} onPress={() => undefined}>
+          <SafeAreaView edges={['bottom']} style={{ flex: 1 }}>
             <View style={styles.handle} />
             {(title || eyebrow) && (
               <View style={styles.header}>
@@ -37,7 +58,15 @@ export function BottomSheet({ visible, onClose, title, eyebrow, children }: Prop
                 </IconButton>
               </View>
             )}
-            <View style={{ paddingHorizontal: space.xl, paddingBottom: 28 }}>{children}</View>
+            <View
+              style={{
+                flex: 1,
+                paddingHorizontal: contentPadding ?? space.xl,
+                paddingBottom: contentPadding === 0 ? 0 : 12,
+              }}
+            >
+              {children}
+            </View>
           </SafeAreaView>
         </Pressable>
       </Pressable>
@@ -58,7 +87,6 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopColor: colors.border,
     borderTopWidth: 1,
-    maxHeight: '85%',
   },
   handle: {
     width: 36,

@@ -513,6 +513,7 @@ export default function SessionScreen() {
         visible={sheet === 'replace'}
         onClose={() => setSheet(null)}
         title="Sustituir ejercicio"
+        tall
       >
         <ExerciseList exercises={exercises} onPick={onPickReplace} />
       </BottomSheet>
@@ -521,6 +522,7 @@ export default function SessionScreen() {
         visible={sheet === 'add'}
         onClose={() => setSheet(null)}
         title="Añadir ejercicio"
+        tall
       >
         <ExerciseList exercises={exercises} onPick={onPickAdd} />
       </BottomSheet>
@@ -572,7 +574,7 @@ function ActionBtn({
 
 function ExerciseList({ exercises, onPick }: { exercises: Exercise[]; onPick: (id: number) => void }) {
   return (
-    <ScrollView style={{ maxHeight: 480 }}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 16 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.raised, borderRadius: 12, padding: 12, marginBottom: 12 }}>
         <SearchIcon size={16} color={colors.textMut} />
         <Text variant="caption" tone="muted">Selecciona un ejercicio</Text>

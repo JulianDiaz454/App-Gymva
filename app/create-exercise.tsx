@@ -312,7 +312,9 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   iconCell: {
-    width: '18%',
+    // flexBasis 18% deja margen para el gap; aspectRatio mantiene cuadrado.
+    flexGrow: 0,
+    flexBasis: '18%',
     aspectRatio: 1,
     borderRadius: 12,
     alignItems: 'center',
@@ -325,10 +327,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+    justifyContent: 'space-between',
   },
   colorCell: {
-    width: 38,
-    height: 38,
+    width: 36,
+    height: 36,
     borderRadius: radii.pill,
     alignItems: 'center',
     justifyContent: 'center',

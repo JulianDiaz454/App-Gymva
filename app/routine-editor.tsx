@@ -431,8 +431,8 @@ export default function RoutineEditorScreen() {
         </View>
       </ScrollView>
 
-      <BottomSheet visible={picker} onClose={() => setPicker(false)} title="Elegir ejercicio">
-        <ScrollView style={{ maxHeight: 480 }}>
+      <BottomSheet visible={picker} onClose={() => setPicker(false)} title="Elegir ejercicio" tall contentPadding={0}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: space.xl, paddingBottom: 24 }}>
           {exercises.map((ex) => (
             <Pressable
               key={ex.id}
