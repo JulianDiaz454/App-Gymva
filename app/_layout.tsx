@@ -48,6 +48,7 @@ export default function RootLayout() {
             name="session"
             options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
           />
+          <Stack.Screen name="routines" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen
             name="routine-editor"
             options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}

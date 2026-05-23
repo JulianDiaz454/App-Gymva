@@ -157,8 +157,54 @@ export default function ExercisesTab() {
             />
           </View>
         ) : null}
+
+        {/* Acceso a otras secciones */}
+        <View style={{ marginTop: 8, gap: 8 }}>
+          <Text variant="section" tone="muted" style={{ marginBottom: 6 }}>
+            Más
+          </Text>
+          <MoreCard
+            emoji="📋"
+            title="Rutinas"
+            subtitle="Plantillas semanales para entrenar"
+            onPress={() => router.push('/routines')}
+          />
+          <MoreCard
+            emoji="📏"
+            title="Peso y medidas"
+            subtitle="Registra tu evolución corporal"
+            onPress={() => router.push('/measurements')}
+          />
+        </View>
       </View>
     </Screen>
+  );
+}
+
+function MoreCard({
+  emoji,
+  title,
+  subtitle,
+  onPress,
+}: {
+  emoji: string;
+  title: string;
+  subtitle: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable onPress={onPress} style={styles.moreCard}>
+      <View style={styles.moreEmoji}>
+        <Text style={{ fontSize: 20 }}>{emoji}</Text>
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text variant="bodyStrong">{title}</Text>
+        <Text variant="micro" tone="muted" style={{ marginTop: 2 }}>
+          {subtitle}
+        </Text>
+      </View>
+      <ChevronIcon size={12} color={colors.textMut} dir="right" />
+    </Pressable>
   );
 }
 
@@ -201,5 +247,21 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingHorizontal: space.lg,
     paddingVertical: 12,
+  },
+  moreCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 16,
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+  },
+  moreEmoji: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: colors.elevated,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
