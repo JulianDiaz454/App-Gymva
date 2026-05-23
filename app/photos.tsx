@@ -1,4 +1,8 @@
-import * as FileSystem from 'expo-file-system';
+// expo-file-system v19 movió las funciones síncronas a /legacy.
+// Mantenemos la API legacy aquí porque es la que casa con el uso
+// (documentDirectory + copyAsync). La nueva API basada en File/Directory
+// es más limpia pero requiere refactor mayor.
+import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';

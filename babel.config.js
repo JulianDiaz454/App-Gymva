@@ -1,7 +1,7 @@
 module.exports = function (api) {
   api.cache(true);
   return {
-    presets: [['babel-preset-expo', { jsxImportSource: 'react' }]],
+    presets: ['babel-preset-expo'],
     plugins: [
       [
         'module-resolver',
@@ -11,7 +11,8 @@ module.exports = function (api) {
           },
         },
       ],
-      'react-native-reanimated/plugin',
+      // NOTA: en SDK 54 el plugin de react-native-reanimated/worklets ya viene
+      // incluido en babel-preset-expo, no hay que añadirlo manualmente.
     ],
   };
 };
