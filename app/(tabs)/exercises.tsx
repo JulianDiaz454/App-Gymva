@@ -175,6 +175,12 @@ export default function ExercisesTab() {
             subtitle="Registra tu evolución corporal"
             onPress={() => router.push('/measurements')}
           />
+          <MoreCard
+            emoji="📷"
+            title="Fotos de progreso"
+            subtitle="Galería antes/después"
+            onPress={() => router.push('/photos')}
+          />
         </View>
       </View>
     </Screen>

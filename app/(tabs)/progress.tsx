@@ -1,16 +1,99 @@
-import { Header } from '@/components/Header';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
+
+import { ChevronIcon } from '@/components/AppIcons';
 import { EmptyState } from '@/components/EmptyState';
+import { ExerciseIcon } from '@/components/ExerciseIcon';
+import { Header } from '@/components/Header';
 import { Screen } from '@/components/Screen';
+import { Text } from '@/components/Text';
+import { listExercisesWithStats, type ExerciseStat } from '@/db/queries/progress';
+import { colors, space } from '@/theme/tokens';
+import { formatNumber } from '@/utils/format';
 
 export default function ProgressTab() {
+  const [items, setItems] = useState<ExerciseStat[]>([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      listExercisesWithStats().then((rows) => {
+        setItems(rows.filter((r) => r.sessionCount > 0));
+      });
+    }, []),
+  );
+
+  if (items.length === 0) {
+    return (
+      <Screen>
+        <Header eyebrow="Tu progreso" title="Levantamiento" />
+        <EmptyState
+          emoji="📊"
+          title="Sin datos todavía"
+          message="Tus gráficas aparecerán aquí cuando registres tu primera serie."
+        />
+      </Screen>
+    );
+  }
+
   return (
     <Screen>
       <Header eyebrow="Tu progreso" title="Levantamiento" />
-      <EmptyState
-        emoji="📊"
-        title="Sin datos todavía"
-        message="Tus gráficas aparecerán aquí cuando registres tu primera sesión."
-      />
+      <View style={{ paddingHorizontal: space.xl, marginTop: -8, marginBottom: 16 }}>
+        <Text variant="caption" tone="secondary">
+          Selecciona un ejercicio para ver su evolución
+        </Text>
+      </View>
+
+      <View style={{ paddingHorizontal: space.xl, gap: 8 }}>
+        {items.map((it) => {
+          const change =
+            it.prevTopWeight > 0 ? ((it.lastTopWeight - it.prevTopWeight) / it.prevTopWeight) * 100 : 0;
+          const positive = change > 0;
+          const neutral = change === 0;
+          return (
+            <Pressable
+              key={it.exerciseId}
+              onPress={() => router.push({ pathname: '/exercise/[id]', params: { id: String(it.exerciseId) } })}
+              style={styles.row}
+            >
+              <ExerciseIcon icon={it.icon} color={it.color} size="sm" />
+              <View style={{ flex: 1 }}>
+                <Text variant="bodyStrong">{it.name}</Text>
+                <Text variant="micro" tone="muted" tabular>
+                  Último {formatNumber(it.lastTopWeight)} kg · {it.sessionCount} ses.
+                </Text>
+              </View>
+              {it.prevTopWeight > 0 ? (
+                <Text
+                  tabular
+                  style={{
+                    fontSize: 13,
+                    fontWeight: '600',
+                    color: positive ? colors.ok : neutral ? colors.textMut : colors.bad,
+                    marginRight: 4,
+                  }}
+                >
+                  {positive ? '+' : ''}
+                  {formatNumber(change, { decimals: 1 })}%
+                </Text>
+              ) : null}
+              <ChevronIcon size={12} color={colors.textMut} dir="right" />
+            </Pressable>
+          );
+        })}
+      </View>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 14,
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+  },
+});
