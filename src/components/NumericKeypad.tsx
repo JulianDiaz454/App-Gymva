@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring } from 'react-native-reanimated';
 
 import { BackspaceIcon, CheckIcon } from '@/components/AppIcons';
 import { Text } from '@/components/Text';
@@ -15,6 +16,17 @@ interface Props {
 }
 
 export function NumericKeypad({ onKey, onSave, saveLabel = 'Guardar serie' }: Props) {
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  const handleSave = () => {
+    scale.value = withSequence(
+      withSpring(0.96, { damping: 18, stiffness: 380 }),
+      withSpring(1, { damping: 14, stiffness: 220 }),
+    );
+    onSave();
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.grid}>
@@ -35,16 +47,12 @@ export function NumericKeypad({ onKey, onSave, saveLabel = 'Guardar serie' }: Pr
           </Pressable>
         ))}
       </View>
-      <Pressable
-        onPress={onSave}
-        style={({ pressed }) => [
-          styles.save,
-          pressed && { transform: [{ scale: 0.98 }] },
-        ]}
-      >
-        <CheckIcon size={18} color={colors.bg} />
-        <Text variant="bodyStrong" style={styles.saveText}>{saveLabel}</Text>
-      </Pressable>
+      <Animated.View style={animatedStyle}>
+        <Pressable onPress={handleSave} style={styles.save}>
+          <CheckIcon size={18} color={colors.bg} />
+          <Text variant="bodyStrong" style={styles.saveText}>{saveLabel}</Text>
+        </Pressable>
+      </Animated.View>
     </View>
   );
 }

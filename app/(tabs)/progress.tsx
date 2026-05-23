@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { ExerciseIcon } from '@/components/ExerciseIcon';
 import { Header } from '@/components/Header';
 import { Screen } from '@/components/Screen';
+import { StaggerItem } from '@/components/StaggerItem';
 import { Text } from '@/components/Text';
 import { listExercisesWithStats, type ExerciseStat } from '@/db/queries/progress';
 import { colors, space } from '@/theme/tokens';
@@ -46,14 +47,14 @@ export default function ProgressTab() {
       </View>
 
       <View style={{ paddingHorizontal: space.xl, gap: 8 }}>
-        {items.map((it) => {
+        {items.map((it, idx) => {
           const change =
             it.prevTopWeight > 0 ? ((it.lastTopWeight - it.prevTopWeight) / it.prevTopWeight) * 100 : 0;
           const positive = change > 0;
           const neutral = change === 0;
           return (
+            <StaggerItem key={it.exerciseId} index={idx}>
             <Pressable
-              key={it.exerciseId}
               onPress={() => router.push({ pathname: '/exercise/[id]', params: { id: String(it.exerciseId) } })}
               style={styles.row}
             >
@@ -80,6 +81,7 @@ export default function ProgressTab() {
               ) : null}
               <ChevronIcon size={12} color={colors.textMut} dir="right" />
             </Pressable>
+            </StaggerItem>
           );
         })}
       </View>

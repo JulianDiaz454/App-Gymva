@@ -7,8 +7,10 @@ import { ChevronIcon, ClockIcon, CheckIcon } from '@/components/AppIcons';
 import { Chip } from '@/components/Chip';
 import { EmptyState } from '@/components/EmptyState';
 import { ExerciseIcon } from '@/components/ExerciseIcon';
+import { FadeInView } from '@/components/FadeIn';
 import { Header } from '@/components/Header';
 import { Screen } from '@/components/Screen';
+import { StaggerItem } from '@/components/StaggerItem';
 import { Text } from '@/components/Text';
 import { createSession } from '@/db/queries/sessions';
 import { getTodayState, type TodayState, type TodayPlanBlock } from '@/domain/today';
@@ -93,6 +95,7 @@ export default function TodayScreen() {
 
   return (
     <Screen>
+      <FadeInView>
       <Header
         eyebrow={formatLongDate(state.date)}
         title={state.routineDayLabel ?? state.routine?.name ?? 'Entrenamiento'}
@@ -146,8 +149,8 @@ export default function TodayScreen() {
                 b.targetWeight ? ` · ${formatNumber(b.targetWeight)} kg` : ''
               }`;
           return (
+            <StaggerItem key={b.routineExerciseId} index={idx}>
             <Pressable
-              key={b.routineExerciseId}
               onPress={() => startSession(idx)}
               style={[
                 styles.exerciseRow,
@@ -189,6 +192,7 @@ export default function TodayScreen() {
                 </View>
               )}
             </Pressable>
+            </StaggerItem>
           );
         })}
       </View>
@@ -198,6 +202,7 @@ export default function TodayScreen() {
           Toca un ejercicio para empezar por él
         </Text>
       </View>
+      </FadeInView>
     </Screen>
   );
 }
