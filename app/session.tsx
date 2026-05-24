@@ -431,20 +431,29 @@ export default function SessionScreen() {
         })}
       </View>
 
-      {/* Hero */}
-      <View style={styles.hero}>
-        <ExerciseIcon icon={current.icon} color={current.color} size="lg" />
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text variant="title" style={{ lineHeight: 26 }}>{current.name}</Text>
-          <Text variant="caption" tone="secondary" style={{ marginTop: 4 }} tabular>
-            Objetivo: {formatNumber(current.targetSets)} × {formatNumber(current.targetReps)}
-            {current.targetWeight ? ` · ${formatNumber(current.targetWeight)} kg` : ''}
-          </Text>
+      {/* Zona central scrolleable: si no entra todo, el usuario puede deslizar
+          en vez de que los chips se compriman y se corten visualmente. Keypad
+          y acciones quedan siempre fijos abajo. */}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={styles.mainScroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Hero */}
+        <View style={styles.hero}>
+          <ExerciseIcon icon={current.icon} color={current.color} size="lg" />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text variant="title" style={{ lineHeight: 26 }}>{current.name}</Text>
+            <Text variant="caption" tone="secondary" style={{ marginTop: 4 }} tabular>
+              Objetivo: {formatNumber(current.targetSets)} × {formatNumber(current.targetReps)}
+              {current.targetWeight ? ` · ${formatNumber(current.targetWeight)} kg` : ''}
+            </Text>
+          </View>
         </View>
-      </View>
 
-      {/* Set chips */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.setsRow}>
+        {/* Set chips */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.setsRow}>
         {weights.map((w, i) => {
           const isLogged = setIds[i] != null;
           const isActive = i === activeSet;
@@ -555,7 +564,8 @@ export default function SessionScreen() {
             </Text>
           </View>
         ) : null}
-      </View>
+        </View>
+      </ScrollView>
 
       {/* Keypad */}
       <NumericKeypad onKey={onKey} onSave={saveSet} />
@@ -702,6 +712,9 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingHorizontal: space.xl,
     paddingTop: space.xl,
+  },
+  mainScroll: {
+    flexGrow: 1,
   },
   setsRow: {
     paddingHorizontal: space.xl,
