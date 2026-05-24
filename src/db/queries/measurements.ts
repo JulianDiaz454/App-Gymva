@@ -20,6 +20,7 @@ import {
   type MeasurementEntryInput,
   type MeasurementTypeInput,
 } from '@/validation/schemas';
+import { runMutation, type MutationResult } from './result';
 
 export async function listMeasurementTypes(): Promise<MeasurementType[]> {
   return db.select().from(measurementTypes).orderBy(asc(measurementTypes.name));
@@ -46,8 +47,8 @@ export async function createMeasurementType(
   }
 }
 
-export async function deleteMeasurementType(id: number): Promise<void> {
-  await db.delete(measurementTypes).where(eq(measurementTypes.id, id));
+export async function deleteMeasurementType(id: number): Promise<MutationResult> {
+  return runMutation(() => db.delete(measurementTypes).where(eq(measurementTypes.id, id)));
 }
 
 export async function listMeasurementEntries(typeId: number): Promise<MeasurementEntry[]> {
@@ -71,8 +72,8 @@ export async function addMeasurementEntry(
   return { ok: true, entry: row };
 }
 
-export async function deleteMeasurementEntry(id: number): Promise<void> {
-  await db.delete(measurementEntries).where(eq(measurementEntries.id, id));
+export async function deleteMeasurementEntry(id: number): Promise<MutationResult> {
+  return runMutation(() => db.delete(measurementEntries).where(eq(measurementEntries.id, id)));
 }
 
 // ── Fotos ────────────────────────────────────────
@@ -99,6 +100,6 @@ export async function addPhoto(opts: {
   return row;
 }
 
-export async function deletePhoto(id: number): Promise<void> {
-  await db.delete(progressPhotos).where(eq(progressPhotos.id, id));
+export async function deletePhoto(id: number): Promise<MutationResult> {
+  return runMutation(() => db.delete(progressPhotos).where(eq(progressPhotos.id, id)));
 }

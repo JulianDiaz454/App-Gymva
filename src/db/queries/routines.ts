@@ -22,6 +22,7 @@ import {
   routineInputSchema,
   type RoutineInput,
 } from '@/validation/schemas';
+import { runMutation, type MutationResult } from './result';
 
 export type RoutineFull = Routine & {
   days: Array<
@@ -109,8 +110,8 @@ export async function updateRoutine(
   return { ok: true, routine: row };
 }
 
-export async function deleteRoutine(id: number): Promise<void> {
-  await db.delete(routines).where(eq(routines.id, id));
+export async function deleteRoutine(id: number): Promise<MutationResult> {
+  return runMutation(() => db.delete(routines).where(eq(routines.id, id)));
 }
 
 export async function setRoutineDay(opts: {
@@ -140,12 +141,12 @@ export async function setRoutineDay(opts: {
   return row;
 }
 
-export async function clearRoutineDayExercises(routineDayId: number): Promise<void> {
-  await db.delete(routineExercises).where(eq(routineExercises.routineDayId, routineDayId));
+export async function clearRoutineDayExercises(routineDayId: number): Promise<MutationResult> {
+  return runMutation(() => db.delete(routineExercises).where(eq(routineExercises.routineDayId, routineDayId)));
 }
 
-export async function deleteRoutineDay(routineDayId: number): Promise<void> {
-  await db.delete(routineDays).where(eq(routineDays.id, routineDayId));
+export async function deleteRoutineDay(routineDayId: number): Promise<MutationResult> {
+  return runMutation(() => db.delete(routineDays).where(eq(routineDays.id, routineDayId)));
 }
 
 export async function addRoutineExercise(opts: {
@@ -179,12 +180,12 @@ export async function updateRoutineExercise(
     targetWeight: number | null;
     order: number;
   }>,
-): Promise<void> {
-  await db.update(routineExercises).set(patch).where(eq(routineExercises.id, id));
+): Promise<MutationResult> {
+  return runMutation(() => db.update(routineExercises).set(patch).where(eq(routineExercises.id, id)));
 }
 
-export async function removeRoutineExercise(id: number): Promise<void> {
-  await db.delete(routineExercises).where(eq(routineExercises.id, id));
+export async function removeRoutineExercise(id: number): Promise<MutationResult> {
+  return runMutation(() => db.delete(routineExercises).where(eq(routineExercises.id, id)));
 }
 
 // ── Save atómico (todo o nada) ───────────────────────────
@@ -294,21 +295,26 @@ export async function getWeekAssignment(weekStart: string): Promise<number | nul
   return rows[0]?.routineId ?? null;
 }
 
-export async function setWeekAssignment(weekStart: string, routineId: number | null): Promise<void> {
-  if (routineId == null) {
-    await db.delete(weekAssignments).where(eq(weekAssignments.weekStart, weekStart));
-    return;
-  }
-  const existing = await db
-    .select()
-    .from(weekAssignments)
-    .where(eq(weekAssignments.weekStart, weekStart))
-    .limit(1);
-  if (existing[0]) {
-    await db.update(weekAssignments).set({ routineId }).where(eq(weekAssignments.weekStart, weekStart));
-  } else {
-    await db.insert(weekAssignments).values({ weekStart, routineId });
-  }
+export async function setWeekAssignment(
+  weekStart: string,
+  routineId: number | null,
+): Promise<MutationResult> {
+  return runMutation(async () => {
+    if (routineId == null) {
+      await db.delete(weekAssignments).where(eq(weekAssignments.weekStart, weekStart));
+      return;
+    }
+    const existing = await db
+      .select()
+      .from(weekAssignments)
+      .where(eq(weekAssignments.weekStart, weekStart))
+      .limit(1);
+    if (existing[0]) {
+      await db.update(weekAssignments).set({ routineId }).where(eq(weekAssignments.weekStart, weekStart));
+    } else {
+      await db.insert(weekAssignments).values({ weekStart, routineId });
+    }
+  });
 }
 
 export async function listWeekAssignments(): Promise<Array<{ weekStart: string; routineId: number }>> {

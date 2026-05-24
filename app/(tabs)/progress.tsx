@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ChevronIcon } from '@/components/AppIcons';
+import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
 import { ExerciseIcon } from '@/components/ExerciseIcon';
 import { Header } from '@/components/Header';
@@ -15,14 +16,34 @@ import { formatNumber } from '@/utils/format';
 
 export default function ProgressTab() {
   const [items, setItems] = useState<ExerciseStat[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  useFocusEffect(
-    useCallback(() => {
-      listExercisesWithStats()
-        .then((rows) => setItems(rows.filter((r) => r.sessionCount > 0)))
-        .catch((e) => console.warn('listExercisesWithStats:', e));
-    }, []),
-  );
+  const load = useCallback(() => {
+    setLoadError(null);
+    listExercisesWithStats()
+      .then((rows) => setItems(rows.filter((r) => r.sessionCount > 0)))
+      .catch((e) => {
+        console.warn('listExercisesWithStats:', e);
+        setLoadError('No se pudo cargar tu progreso.');
+      });
+  }, []);
+
+  useFocusEffect(load);
+
+  if (loadError) {
+    return (
+      <Screen>
+        <Header eyebrow="Tu progreso" title="Levantamiento" />
+        <View style={{ paddingHorizontal: space.xl, alignItems: 'center', gap: 14, paddingTop: 40 }}>
+          <Text variant="title" style={{ textAlign: 'center' }}>{loadError}</Text>
+          <Text variant="caption" tone="secondary" style={{ textAlign: 'center', maxWidth: 280 }}>
+            Comprueba que la base de datos esté disponible y vuelve a intentarlo.
+          </Text>
+          <Button label="Reintentar" onPress={load} />
+        </View>
+      </Screen>
+    );
+  }
 
   if (items.length === 0) {
     return (

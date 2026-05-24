@@ -1,10 +1,11 @@
 import { router } from 'expo-router';
 import { goBackSafe } from '@/utils/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { BackIcon, CloseIcon, EditIcon, PlusIcon, TrashIcon } from '@/components/AppIcons';
+import { BackIcon, EditIcon, PlusIcon, TrashIcon } from '@/components/AppIcons';
+import { BottomSheet } from '@/components/BottomSheet';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { FieldError } from '@/components/FieldError';
@@ -36,16 +37,27 @@ export default function MeasurementsScreen() {
   const [logOpen, setLogOpen] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
 
+  const [opError, setOpError] = useState<string | null>(null);
   const active = useMemo(() => types.find((t) => t.id === activeId) ?? null, [types, activeId]);
 
   const loadTypes = useCallback(async () => {
-    const list = await listMeasurementTypes();
-    setTypes(list);
-    if (list.length > 0 && activeId == null) setActiveId(list[0]!.id);
+    try {
+      const list = await listMeasurementTypes();
+      setTypes(list);
+      if (list.length > 0 && activeId == null) setActiveId(list[0]!.id);
+    } catch (e) {
+      console.warn('loadTypes:', e);
+      setOpError('No se pudieron cargar las medidas.');
+    }
   }, [activeId]);
 
   const loadEntries = useCallback(async (typeId: number) => {
-    setEntries(await listMeasurementEntries(typeId));
+    try {
+      setEntries(await listMeasurementEntries(typeId));
+    } catch (e) {
+      console.warn('loadEntries:', e);
+      setOpError('No se pudieron cargar los registros.');
+    }
   }, []);
 
   useEffect(() => {
@@ -71,6 +83,17 @@ export default function MeasurementsScreen() {
           <EditIcon size={16} color={colors.text} />
         </IconButton>
       </View>
+
+      {opError ? (
+        <View style={{ paddingHorizontal: space.xl, paddingTop: 8 }}>
+          <View style={styles.errorBox}>
+            <Text variant="caption" tone="bad" style={{ flex: 1, fontWeight: '600' }}>{opError}</Text>
+            <IconButton size={28} variant="transparent" onPress={() => setOpError(null)}>
+              <Text variant="caption" tone="muted">✕</Text>
+            </IconButton>
+          </View>
+        </View>
+      ) : null}
 
       <ScrollView contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 12) + 24 }} showsVerticalScrollIndicator={false}>
         {/* Tabs */}
@@ -197,13 +220,27 @@ export default function MeasurementsScreen() {
                     <IconButton
                       size={28}
                       variant="transparent"
-                      onPress={async () => {
-                        try {
-                          await deleteMeasurementEntry(h.id);
-                          if (activeId) await loadEntries(activeId);
-                        } catch (e) {
-                          console.warn('deleteMeasurementEntry:', e);
-                        }
+                      onPress={() => {
+                        Alert.alert(
+                          'Borrar registro',
+                          `${formatNumber(h.value)} ${active.unit} del ${formatLongDate(h.date)}. Esta acción no se puede deshacer.`,
+                          [
+                            { text: 'Cancelar', style: 'cancel' },
+                            {
+                              text: 'Borrar',
+                              style: 'destructive',
+                              onPress: async () => {
+                                setOpError(null);
+                                const r = await deleteMeasurementEntry(h.id);
+                                if (!r.ok) {
+                                  setOpError(r.errors._form ?? 'No se pudo borrar el registro');
+                                  return;
+                                }
+                                if (activeId) await loadEntries(activeId);
+                              },
+                            },
+                          ],
+                        );
                       }}
                     >
                       <TrashIcon size={14} color={colors.textMut} />
@@ -227,49 +264,50 @@ export default function MeasurementsScreen() {
         )}
       </ScrollView>
 
-      {/* Log modal */}
-      <Modal visible={logOpen && active != null} transparent animationType="slide" onRequestClose={() => setLogOpen(false)}>
-        <View style={styles.scrim}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setLogOpen(false)} />
-          <View style={styles.sheet}>
-            {active ? (
-              <LogEntryForm
-                type={active}
-                onSave={async (value) => {
-                  if (!active) return null;
-                  const r = await addMeasurementEntry({
-                    measurementTypeId: active.id,
-                    value,
-                    date: todayIso(),
-                  });
-                  if (!r.ok) {
-                    const firstKey = Object.keys(r.errors)[0];
-                    return (firstKey && r.errors[firstKey]) ?? 'No se pudo guardar';
-                  }
-                  await loadEntries(active.id);
-                  setLogOpen(false);
-                  return null;
-                }}
-                onClose={() => setLogOpen(false)}
-              />
-            ) : null}
-          </View>
-        </View>
-      </Modal>
+      {/* Log sheet */}
+      <BottomSheet
+        visible={logOpen && active != null}
+        onClose={() => setLogOpen(false)}
+        eyebrow="Registrar"
+        title={active?.name ?? ''}
+        contentPadding={0}
+      >
+        {active ? (
+          <LogEntryForm
+            type={active}
+            onSave={async (value) => {
+              if (!active) return null;
+              const r = await addMeasurementEntry({
+                measurementTypeId: active.id,
+                value,
+                date: todayIso(),
+              });
+              if (!r.ok) {
+                const firstKey = Object.keys(r.errors)[0];
+                return (firstKey && r.errors[firstKey]) ?? 'No se pudo guardar';
+              }
+              await loadEntries(active.id);
+              setLogOpen(false);
+              return null;
+            }}
+          />
+        ) : null}
+      </BottomSheet>
 
-      {/* Configure modal */}
-      <Modal visible={configOpen} transparent animationType="slide" onRequestClose={() => setConfigOpen(false)}>
-        <View style={styles.scrim}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setConfigOpen(false)} />
-          <View style={[styles.sheet, styles.sheetTall]}>
-            <ConfigureForm
-              types={types}
-              onClose={() => setConfigOpen(false)}
-              onRefresh={loadTypes}
-            />
-          </View>
-        </View>
-      </Modal>
+      {/* Configure sheet */}
+      <BottomSheet
+        visible={configOpen}
+        onClose={() => setConfigOpen(false)}
+        eyebrow="Configurar"
+        title="Tipos de medida"
+        tall
+        contentPadding={0}
+      >
+        <ConfigureForm
+          types={types}
+          onRefresh={loadTypes}
+        />
+      </BottomSheet>
     </SafeAreaView>
   );
 }
@@ -277,12 +315,10 @@ export default function MeasurementsScreen() {
 function LogEntryForm({
   type,
   onSave,
-  onClose,
 }: {
   type: MeasurementType;
   /** Devuelve un mensaje de error si falla; null si OK. */
   onSave: (value: number) => Promise<string | null>;
-  onClose: () => void;
 }) {
   const [buf, setBuf] = useState<string>('0');
   const [error, setError] = useState<string | null>(null);
@@ -325,17 +361,7 @@ function LogEntryForm({
   };
 
   return (
-    <SafeAreaView edges={['bottom']}>
-      <View style={styles.sheetHandle} />
-      <View style={styles.sheetHeader}>
-        <View>
-          <Text variant="eyebrow" tone="muted">Registrar</Text>
-          <Text variant="title">{type.name}</Text>
-        </View>
-        <IconButton size={34} onPress={onClose}>
-          <CloseIcon size={16} color={colors.textSec} />
-        </IconButton>
-      </View>
+    <View>
       <View style={{ alignItems: 'center', padding: 12 }}>
         <Text tabular style={styles.logBigNum}>
           {displayInputBuffer(buf)}
@@ -344,21 +370,20 @@ function LogEntryForm({
         {error ? <FieldError message={error} /> : null}
       </View>
       <View style={{ paddingHorizontal: 8 }}>
-        <NumericKeypad onKey={onKey} onSave={save} saveLabel="Guardar" />
+        <NumericKeypad onKey={onKey} onSave={save} saveLabel={saving ? 'Guardando…' : 'Guardar'} />
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 function ConfigureForm({
   types,
-  onClose,
   onRefresh,
 }: {
   types: MeasurementType[];
-  onClose: () => void;
   onRefresh: () => Promise<void>;
 }) {
+  const [delError, setDelError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState('');
   const [newUnit, setNewUnit] = useState<string>('cm');
@@ -378,18 +403,8 @@ function ConfigureForm({
   };
 
   return (
-    <SafeAreaView edges={['bottom']} style={{ flex: 1 }}>
-      <View style={styles.sheetHandle} />
-      <View style={styles.sheetHeader}>
-        <View>
-          <Text variant="eyebrow" tone="muted">Configurar</Text>
-          <Text variant="title">Partes a medir</Text>
-        </View>
-        <IconButton size={34} onPress={onClose}>
-          <CloseIcon size={16} color={colors.textSec} />
-        </IconButton>
-      </View>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: space.xl, paddingBottom: 32 }}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: space.xl, paddingBottom: 32 }}>
+        {delError ? <FieldError message={delError} /> : null}
         {types.map((t) => (
           <View
             key={t.id}
@@ -413,7 +428,12 @@ function ConfigureForm({
               size={34}
               variant="transparent"
               onPress={async () => {
-                await deleteMeasurementType(t.id);
+                setDelError(null);
+                const r = await deleteMeasurementType(t.id);
+                if (!r.ok) {
+                  setDelError(r.errors._form ?? 'No se pudo borrar');
+                  return;
+                }
                 await onRefresh();
               }}
             >
@@ -485,7 +505,6 @@ function ConfigureForm({
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
   );
 }
 
@@ -557,39 +576,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
-  scrim: {
-    flex: 1,
-    backgroundColor: colors.overlayDeep,
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  sheetTall: {
-    // Para sheets con contenido scrolleable. height fijo: garantiza que el
-    // ScrollView interno (flex:1) tenga un padre con altura real definida.
-    height: '92%',
-  },
-  sheetHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: radii.pill,
-    backgroundColor: colors.border,
-    alignSelf: 'center',
-    marginBottom: 14,
-  },
-  sheetHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: space.xl,
-    paddingBottom: 12,
-  },
   logBigNum: {
     fontSize: 64,
     fontWeight: '600',
@@ -604,6 +590,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.elevated,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(248,113,113,0.12)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(248,113,113,0.4)',
   },
   addBtn: {
     marginTop: 14,

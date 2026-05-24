@@ -19,14 +19,19 @@ export default function ExercisesTab() {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<string>(ALL);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  useFocusEffect(
-    useCallback(() => {
-      listExercises()
-        .then(setExercises)
-        .catch((e) => console.warn('listExercises:', e));
-    }, []),
-  );
+  const load = useCallback(() => {
+    setLoadError(null);
+    listExercises()
+      .then(setExercises)
+      .catch((e) => {
+        console.warn('listExercises:', e);
+        setLoadError('No se pudo cargar el catálogo.');
+      });
+  }, []);
+
+  useFocusEffect(load);
 
   const muscles = useMemo<string[]>(() => {
     const set = new Set<string>();
@@ -68,6 +73,17 @@ export default function ExercisesTab() {
           </IconButton>
         }
       />
+
+      {loadError ? (
+        <View style={{ paddingHorizontal: space.xl, paddingTop: 8 }}>
+          <View style={styles.errorBox}>
+            <Text variant="caption" tone="bad" style={{ flex: 1, fontWeight: '600' }}>
+              {loadError}
+            </Text>
+            <Button label="Reintentar" variant="ghost" size="sm" onPress={load} />
+          </View>
+        </View>
+      ) : null}
 
       {/* Search */}
       <View style={{ paddingHorizontal: space.xl, paddingTop: space.md }}>
@@ -271,5 +287,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.elevated,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(248,113,113,0.12)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(248,113,113,0.4)',
   },
 });

@@ -22,6 +22,7 @@ import {
   setInputSchema,
   type SetInput,
 } from '@/validation/schemas';
+import { runMutation, type MutationResult } from './result';
 
 export type SessionFull = Session & {
   blocks: Array<
@@ -87,23 +88,24 @@ export async function ensureSessionBlock(opts: {
   return row;
 }
 
-export async function setSkipped(sessionExerciseId: number, skipped: boolean): Promise<void> {
-  await db
-    .update(sessionExercises)
-    .set({ skipped })
-    .where(eq(sessionExercises.id, sessionExerciseId));
+export async function setSkipped(sessionExerciseId: number, skipped: boolean): Promise<MutationResult> {
+  return runMutation(() =>
+    db.update(sessionExercises).set({ skipped }).where(eq(sessionExercises.id, sessionExerciseId)),
+  );
 }
 
 export async function replaceSessionExercise(
   sessionExerciseId: number,
   newExerciseId: number,
-): Promise<void> {
+): Promise<MutationResult> {
   // Borra sets previos (las series del ejercicio sustituido no son del nuevo).
-  await db.delete(sets).where(eq(sets.sessionExerciseId, sessionExerciseId));
-  await db
-    .update(sessionExercises)
-    .set({ exerciseId: newExerciseId, skipped: false })
-    .where(eq(sessionExercises.id, sessionExerciseId));
+  return runMutation(async () => {
+    await db.delete(sets).where(eq(sets.sessionExerciseId, sessionExerciseId));
+    await db
+      .update(sessionExercises)
+      .set({ exerciseId: newExerciseId, skipped: false })
+      .where(eq(sessionExercises.id, sessionExerciseId));
+  });
 }
 
 export type LogSetResult =
@@ -146,8 +148,8 @@ export async function updateSet(
   return { ok: true, set: row };
 }
 
-export async function deleteSet(setId: number): Promise<void> {
-  await db.delete(sets).where(eq(sets.id, setId));
+export async function deleteSet(setId: number): Promise<MutationResult> {
+  return runMutation(() => db.delete(sets).where(eq(sets.id, setId)));
 }
 
 export async function getSessionBlocks(sessionId: number): Promise<
@@ -158,13 +160,8 @@ export async function getSessionBlocks(sessionId: number): Promise<
     .from(sessionExercises)
     .where(eq(sessionExercises.sessionId, sessionId))
     .orderBy(asc(sessionExercises.order));
-  const allSets = await db
-    .select()
-    .from(sets)
-    .where(eq(sets.sessionExerciseId, blocks[0]?.id ?? -1)); // dummy if no blocks
-
-  // Cargar todos los sets de la sesión de un golpe.
   if (blocks.length === 0) return [];
+
   const ids = blocks.map((b) => b.id);
   const allBySession = await db
     .select()
@@ -208,6 +205,6 @@ export async function listSessions(): Promise<Session[]> {
   return db.select().from(sessions).orderBy(desc(sessions.date));
 }
 
-export async function deleteSession(id: number): Promise<void> {
-  await db.delete(sessions).where(eq(sessions.id, id));
+export async function deleteSession(id: number): Promise<MutationResult> {
+  return runMutation(() => db.delete(sessions).where(eq(sessions.id, id)));
 }

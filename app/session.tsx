@@ -488,6 +488,14 @@ export default function SessionScreen() {
           </View>
         </View>
 
+        {/* Hint para gesto destructivo: long-press sin afordancia visual era
+            invisible para usuarios nuevos. */}
+        <View style={{ paddingHorizontal: space.xl, paddingTop: 8 }}>
+          <Text variant="micro" tone="muted">
+            Mantén pulsada una serie para eliminarla
+          </Text>
+        </View>
+
         {/* Set chips */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.setsRow}>
         {weights.map((w, i) => {

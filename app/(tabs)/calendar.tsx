@@ -1,9 +1,9 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Dimensions, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { CheckIcon, ChevronIcon, ClockIcon, CloseIcon } from '@/components/AppIcons';
+import { CheckIcon, ChevronIcon, ClockIcon } from '@/components/AppIcons';
+import { BottomSheet } from '@/components/BottomSheet';
 import { Card } from '@/components/Card';
 import { ExerciseIcon } from '@/components/ExerciseIcon';
 import { Header } from '@/components/Header';
@@ -134,18 +134,23 @@ export default function CalendarTab() {
     return { done, planned };
   }, [sessions, sessionsByDay, weeks, weekMap, routineDays]);
 
-  const onSelectDay = async (d: number) => {
-    setSelectedDay(d);
-    const date = toIsoDate(new Date(year, month, d));
-    const s = await getSessionForDate(date);
-    setSessionDetail(s);
-  };
+  const onSelectDay = useCallback(
+    async (d: number) => {
+      setSelectedDay(d);
+      const date = toIsoDate(new Date(year, month, d));
+      const s = await getSessionForDate(date);
+      setSessionDetail(s);
+    },
+    [year, month],
+  );
 
-  // Inicializa el detalle de la sesión del día seleccionado
+  // Refresca el detalle del día seleccionado cuando cambia el mes o llegan
+  // sesiones nuevas. Deps explícitas: incluyen onSelectDay (memoizado por
+  // mes/año) y selectedDay, así no hay stale closure si cambia el día
+  // seleccionado sin que cambie el mes.
   useEffect(() => {
     onSelectDay(selectedDay);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [year, month, sessions.length]);
+  }, [onSelectDay, selectedDay, sessions.length]);
 
   const monthName = MONTHS_FULL_ES[((month % 12) + 12) % 12];
 
@@ -292,74 +297,58 @@ export default function CalendarTab() {
       </View>
 
       {/* Assign-week sheet */}
-      <Modal
+      <BottomSheet
         visible={assignSheet != null}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setAssignSheet(null)}
+        onClose={() => setAssignSheet(null)}
+        eyebrow="Asignar rutina"
+        title="Semana"
+        contentPadding={0}
       >
-        <View style={styles.scrim}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setAssignSheet(null)} />
-          <View style={styles.sheet}>
-            <SafeAreaView edges={['bottom']}>
-            <View style={styles.sheetHandle} />
-            <View style={styles.sheetHeader}>
-              <View>
-                <Text variant="eyebrow" tone="muted">Asignar rutina</Text>
-                <Text variant="title">Semana</Text>
-              </View>
-              <IconButton size={34} onPress={() => setAssignSheet(null)}>
-                <CloseIcon size={16} color={colors.textSec} />
-              </IconButton>
-            </View>
-            <ScrollView contentContainerStyle={{ paddingHorizontal: space.xl, paddingBottom: 28, gap: 8 }}>
-              {assignSheet && weekMap.has(assignSheet) ? (
-                <Pressable onPress={() => assignRoutineToWeek(null)} style={styles.removeBtn}>
-                  <Text variant="caption" tone="secondary" style={{ fontWeight: '600' }}>
-                    Quitar rutina de esta semana
+        <ScrollView contentContainerStyle={{ paddingHorizontal: space.xl, paddingBottom: 28, gap: 8 }}>
+          {assignSheet && weekMap.has(assignSheet) ? (
+            <Pressable onPress={() => assignRoutineToWeek(null)} style={styles.removeBtn}>
+              <Text variant="caption" tone="secondary" style={{ fontWeight: '600' }}>
+                Quitar rutina de esta semana
+              </Text>
+            </Pressable>
+          ) : null}
+          {routines.map((r) => {
+            const isCurrent = assignSheet ? weekMap.get(assignSheet) === r.id : false;
+            const days = routineDays.get(r.id) ?? [];
+            const trainingDays = days.filter((d) => d.label).length;
+            return (
+              <Pressable
+                key={r.id}
+                onPress={() => assignRoutineToWeek(r.id)}
+                style={[styles.routineBtn, isCurrent && { borderColor: r.color, borderWidth: 2 }]}
+              >
+                <View style={[styles.routineColorTile, { backgroundColor: r.color }]}>
+                  <Text tabular style={{ fontSize: 16, fontWeight: '700', color: colors.bg }}>
+                    {trainingDays}
                   </Text>
-                </Pressable>
-              ) : null}
-              {routines.map((r) => {
-                const isCurrent = assignSheet ? weekMap.get(assignSheet) === r.id : false;
-                const days = routineDays.get(r.id) ?? [];
-                const trainingDays = days.filter((d) => d.label).length;
-                return (
-                  <Pressable
-                    key={r.id}
-                    onPress={() => assignRoutineToWeek(r.id)}
-                    style={[styles.routineBtn, isCurrent && { borderColor: r.color, borderWidth: 2 }]}
-                  >
-                    <View style={[styles.routineColorTile, { backgroundColor: r.color }]}>
-                      <Text tabular style={{ fontSize: 16, fontWeight: '700', color: colors.bg }}>
-                        {trainingDays}
-                      </Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text variant="bodyStrong">{r.name}</Text>
-                      <Text variant="micro" tone="muted">
-                        {formatNumber(trainingDays)} días entrenando
-                      </Text>
-                    </View>
-                    {isCurrent ? <CheckIcon size={16} color={r.color} /> : null}
-                  </Pressable>
-                );
-              })}
-              {routines.length === 0 ? (
-                <Text tone="muted" variant="caption" style={{ textAlign: 'center', padding: 20 }}>
-                  Aún no tienes rutinas. Créalas desde Ejercicios &gt; Rutinas.
-                </Text>
-              ) : null}
-              {assignError ? (
-                <Text tone="bad" variant="caption" style={{ textAlign: 'center', paddingTop: 8 }}>
-                  {assignError}
-                </Text>
-              ) : null}
-            </ScrollView>
-            </SafeAreaView>
-          </View>
-        </View>
-      </Modal>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text variant="bodyStrong">{r.name}</Text>
+                  <Text variant="micro" tone="muted">
+                    {formatNumber(trainingDays)} días entrenando
+                  </Text>
+                </View>
+                {isCurrent ? <CheckIcon size={16} color={r.color} /> : null}
+              </Pressable>
+            );
+          })}
+          {routines.length === 0 ? (
+            <Text tone="muted" variant="caption" style={{ textAlign: 'center', padding: 20 }}>
+              Aún no tienes rutinas. Créalas desde Ejercicios &gt; Rutinas.
+            </Text>
+          ) : null}
+          {assignError ? (
+            <Text tone="bad" variant="caption" style={{ textAlign: 'center', paddingTop: 8 }}>
+              {assignError}
+            </Text>
+          ) : null}
+        </ScrollView>
+      </BottomSheet>
     </Screen>
   );
 }
@@ -654,38 +643,6 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     borderTopColor: colors.borderSoft,
     borderTopWidth: 1,
-  },
-  scrim: {
-    flex: 1,
-    backgroundColor: colors.overlay,
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingTop: 12,
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
-    // minHeight asegura que aunque la lista esté vacía o tenga pocos items,
-    // el sheet sea visible y contenga el header.
-    minHeight: 240,
-    maxHeight: Dimensions.get('window').height * 0.85,
-  },
-  sheetHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: radii.pill,
-    backgroundColor: colors.border,
-    alignSelf: 'center',
-    marginBottom: 14,
-  },
-  sheetHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: space.xl,
-    paddingBottom: 12,
   },
   removeBtn: {
     padding: 14,

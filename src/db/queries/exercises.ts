@@ -3,6 +3,7 @@ import { asc, eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { exercises, type Exercise, type NewExercise } from '@/db/schema';
 import { exerciseInputSchema, formatZodErrors, type ExerciseInput } from '@/validation/schemas';
+import { runMutation, type MutationResult } from './result';
 
 export async function listExercises(): Promise<Exercise[]> {
   return db.select().from(exercises).orderBy(asc(exercises.name));
@@ -76,15 +77,6 @@ export async function updateExercise(
   }
 }
 
-export async function deleteExercise(id: number): Promise<{ ok: boolean; error?: string }> {
-  try {
-    await db.delete(exercises).where(eq(exercises.id, id));
-    return { ok: true };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    if (msg.toLowerCase().includes('foreign')) {
-      return { ok: false, error: 'No se puede borrar: hay rutinas o sesiones que lo usan' };
-    }
-    return { ok: false, error: msg };
-  }
+export async function deleteExercise(id: number): Promise<MutationResult> {
+  return runMutation(() => db.delete(exercises).where(eq(exercises.id, id)));
 }

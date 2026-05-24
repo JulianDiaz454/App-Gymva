@@ -66,12 +66,19 @@ export default function PhotosScreen() {
   };
 
   const onDelete = async (p: ProgressPhoto) => {
+    setError(null);
+    // Primero la DB: si falla, mantenemos el archivo y avisamos.
+    // Evita el estado "archivo borrado + fila en DB" que dejaba imágenes rotas.
+    const r = await deletePhoto(p.id);
+    if (!r.ok) {
+      setError(r.errors._form ?? 'No se pudo borrar la foto');
+      return;
+    }
     try {
       await FileSystem.deleteAsync(p.filePath, { idempotent: true });
     } catch {
-      // archivo ya no existe — sigue
+      // archivo ya no existe — la DB ya está limpia, continuar
     }
-    await deletePhoto(p.id);
     await load();
   };
 

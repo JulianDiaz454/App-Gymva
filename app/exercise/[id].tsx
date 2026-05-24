@@ -38,20 +38,42 @@ export default function ExerciseDetailScreen() {
     });
   };
 
+  const [loadError, setLoadError] = useState<string | null>(null);
   useEffect(() => {
+    if (!Number.isFinite(exId)) return;
+    let cancelled = false;
+    setLoadError(null);
     (async () => {
-      if (!Number.isFinite(exId)) return;
-      setEx(await getExercise(exId));
-      const h = await getExerciseHistory(exId);
-      setHistory(h);
-      setHoverIdx(h.length - 1);
+      try {
+        const [e, h] = await Promise.all([getExercise(exId), getExerciseHistory(exId)]);
+        if (cancelled) return;
+        setEx(e);
+        setHistory(h);
+        setHoverIdx(h.length - 1);
+      } catch (err) {
+        if (cancelled) return;
+        console.warn('exercise/[id] load:', err);
+        setLoadError('No se pudo cargar el ejercicio.');
+      }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [exId]);
 
   const values = useMemo(
     () => history.map((h) => (metric === 'top' ? h.topWeight : h.volume)),
     [history, metric],
   );
+
+  if (loadError) {
+    return (
+      <Screen withTabBar={false}>
+        <BackBar />
+        <EmptyState emoji="⚠️" title={loadError} message="Vuelve atrás y reintenta." />
+      </Screen>
+    );
+  }
 
   if (!ex) {
     return (
