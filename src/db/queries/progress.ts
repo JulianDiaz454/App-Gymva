@@ -9,6 +9,12 @@ import { and, asc, eq, sql } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { exercises, sessionExercises, sessions, sets } from '@/db/schema';
 
+export interface ExerciseSetDetail {
+  setNumber: number;
+  weight: number;
+  reps: number;
+}
+
 export interface ExerciseSessionPoint {
   date: string;
   sessionId: number;
@@ -16,6 +22,7 @@ export interface ExerciseSessionPoint {
   volume: number;
   totalReps: number;
   setCount: number;
+  sets: ExerciseSetDetail[];
 }
 
 export async function getExerciseHistory(exerciseId: number): Promise<ExerciseSessionPoint[]> {
@@ -24,6 +31,7 @@ export async function getExerciseHistory(exerciseId: number): Promise<ExerciseSe
     .select({
       date: sessions.date,
       sessionId: sessions.id,
+      setNumber: sets.setNumber,
       weight: sets.weight,
       reps: sets.reps,
     })
@@ -31,16 +39,22 @@ export async function getExerciseHistory(exerciseId: number): Promise<ExerciseSe
     .innerJoin(sessionExercises, eq(sessionExercises.id, sets.sessionExerciseId))
     .innerJoin(sessions, eq(sessions.id, sessionExercises.sessionId))
     .where(and(eq(sessionExercises.exerciseId, exerciseId), eq(sessionExercises.skipped, false)))
-    .orderBy(asc(sessions.date));
+    .orderBy(asc(sessions.date), asc(sets.setNumber));
 
   const bySession = new Map<number, ExerciseSessionPoint>();
   for (const r of rows) {
+    const detail: ExerciseSetDetail = {
+      setNumber: r.setNumber,
+      weight: r.weight,
+      reps: r.reps,
+    };
     const cur = bySession.get(r.sessionId);
     if (cur) {
       cur.topWeight = Math.max(cur.topWeight, r.weight);
       cur.volume += r.weight * r.reps;
       cur.totalReps += r.reps;
       cur.setCount += 1;
+      cur.sets.push(detail);
     } else {
       bySession.set(r.sessionId, {
         date: r.date,
@@ -49,6 +63,7 @@ export async function getExerciseHistory(exerciseId: number): Promise<ExerciseSe
         volume: r.weight * r.reps,
         totalReps: r.reps,
         setCount: 1,
+        sets: [detail],
       });
     }
   }

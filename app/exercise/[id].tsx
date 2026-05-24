@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { TrendIcon } from '@/components/AppIcons';
+import { ChevronIcon, TrendIcon } from '@/components/AppIcons';
 import { BackBar } from '@/components/BackBar';
 import { Card } from '@/components/Card';
 import { EmptyState } from '@/components/EmptyState';
@@ -27,6 +27,16 @@ export default function ExerciseDetailScreen() {
   const [history, setHistory] = useState<ExerciseSessionPoint[]>([]);
   const [metric, setMetric] = useState<Metric>('top');
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const [expanded, setExpanded] = useState<Set<number>>(() => new Set());
+
+  const toggleExpanded = (sessionId: number) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(sessionId)) next.delete(sessionId);
+      else next.add(sessionId);
+      return next;
+    });
+  };
 
   useEffect(() => {
     (async () => {
@@ -172,22 +182,63 @@ export default function ExerciseDetailScreen() {
         <Text variant="section" tone="muted" style={{ marginBottom: 10 }}>
           Historial por sesión
         </Text>
+        <Text variant="micro" tone="muted" style={{ marginBottom: 10 }}>
+          Toca una sesión para ver el detalle de cada serie
+        </Text>
         <View style={{ gap: 8 }}>
-          {history.slice().reverse().map((h, i) => (
-            <Card key={h.sessionId} padding={14}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-                <Text variant="bodyStrong" style={{ fontSize: 14, textTransform: 'capitalize' }}>
-                  {formatLongDate(h.date)}
-                </Text>
-                <Text tabular variant="caption" tone="secondary">
-                  pico {formatNumber(h.topWeight)} kg
-                </Text>
-              </View>
-              <Text tabular variant="micro" tone="muted">
-                {formatNumber(h.setCount)} series · {formatNumber(h.totalReps)} reps · vol {formatNumber(h.volume)} kg
-              </Text>
-            </Card>
-          ))}
+          {history.slice().reverse().map((h) => {
+            const isOpen = expanded.has(h.sessionId);
+            return (
+              <Card key={h.sessionId} padding={0}>
+                <Pressable
+                  onPress={() => toggleExpanded(h.sessionId)}
+                  style={({ pressed }) => [
+                    { padding: 14 },
+                    pressed && { opacity: 0.7 },
+                  ]}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                        <Text variant="bodyStrong" style={{ fontSize: 14, textTransform: 'capitalize' }}>
+                          {formatLongDate(h.date)}
+                        </Text>
+                        <Text tabular variant="caption" tone="secondary">
+                          pico {formatNumber(h.topWeight)} kg
+                        </Text>
+                      </View>
+                      <Text tabular variant="micro" tone="muted">
+                        {formatNumber(h.setCount)} series · {formatNumber(h.totalReps)} reps · vol {formatNumber(h.volume)} kg
+                      </Text>
+                    </View>
+                    <ChevronIcon size={14} color={colors.textMut} dir={isOpen ? 'up' : 'down'} />
+                  </View>
+                </Pressable>
+                {isOpen ? (
+                  <View style={styles.setsList}>
+                    {h.sets.map((s) => (
+                      <View key={s.setNumber} style={styles.setRow}>
+                        <Text variant="micro" tone="muted" style={{ width: 64, letterSpacing: 0.6, fontWeight: '700' }}>
+                          SERIE {formatNumber(s.setNumber)}
+                        </Text>
+                        <Text tabular style={{ flex: 1, fontSize: 14, fontWeight: '600', color: colors.text }}>
+                          {formatNumber(s.weight)}
+                          <Text style={{ fontSize: 11, fontWeight: '500', color: colors.textMut }}> kg</Text>
+                        </Text>
+                        <Text tabular style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>
+                          ×{' '}
+                          <Text tabular style={{ fontSize: 14, fontWeight: '700' }}>
+                            {formatNumber(s.reps)}
+                          </Text>
+                          <Text style={{ fontSize: 11, fontWeight: '500', color: colors.textMut }}> reps</Text>
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+              </Card>
+            );
+          })}
         </View>
       </View>
     </Screen>
@@ -265,5 +316,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.elevated,
     borderRadius: radii.md,
     padding: 12,
+  },
+  setsList: {
+    paddingHorizontal: 14,
+    paddingBottom: 12,
+    paddingTop: 2,
+    gap: 6,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  setRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 6,
   },
 });
