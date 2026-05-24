@@ -22,7 +22,9 @@ export default function ExercisesTab() {
 
   useFocusEffect(
     useCallback(() => {
-      listExercises().then(setExercises);
+      listExercises()
+        .then(setExercises)
+        .catch((e) => console.warn('listExercises:', e));
     }, []),
   );
 

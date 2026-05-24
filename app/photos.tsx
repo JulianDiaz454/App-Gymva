@@ -40,20 +40,27 @@ export default function PhotosScreen() {
     load();
   }, [load]);
 
+  const [error, setError] = useState<string | null>(null);
+
   const onPick = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-    });
-    if (result.canceled || result.assets.length === 0) return;
-    const asset = result.assets[0]!;
-    await ensurePhotosDir();
-    const fileName = `photo-${Date.now()}.jpg`;
-    const dest = `${PHOTOS_DIR}${fileName}`;
-    await FileSystem.copyAsync({ from: asset.uri, to: dest });
-    // Solo persistimos la ruta en BD (ESPECIFICACION §3.9)
-    await addPhoto({ filePath: dest, date: todayIso() });
-    await load();
+    try {
+      setError(null);
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+      });
+      if (result.canceled || result.assets.length === 0) return;
+      const asset = result.assets[0]!;
+      await ensurePhotosDir();
+      const fileName = `photo-${Date.now()}.jpg`;
+      const dest = `${PHOTOS_DIR}${fileName}`;
+      await FileSystem.copyAsync({ from: asset.uri, to: dest });
+      // Solo persistimos la ruta en BD (ESPECIFICACION §3.9)
+      await addPhoto({ filePath: dest, date: todayIso() });
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo añadir la foto');
+    }
   };
 
   const onDelete = async (p: ProgressPhoto) => {
@@ -79,6 +86,11 @@ export default function PhotosScreen() {
           </IconButton>
         }
       />
+      {error ? (
+        <View style={{ paddingHorizontal: space.xl, paddingBottom: 8 }}>
+          <Text variant="caption" tone="bad">{error}</Text>
+        </View>
+      ) : null}
       {photos.length === 0 ? (
         <EmptyState
           emoji="📷"

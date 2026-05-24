@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
   Keyboard,
   Pressable,
@@ -36,10 +36,10 @@ export default function CreateExerciseScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
-  const canSave = useMemo(() => name.trim().length > 0 && !saving, [name, saving]);
-
+  // El botón guardar está SIEMPRE habilitado salvo mientras se persiste.
+  // Si faltan datos, la validación zod los reporta en línea.
   const onSave = async () => {
-    if (!canSave) return;
+    if (saving) return;
     Keyboard.dismiss();
     setSaving(true);
     setErrors({});
@@ -69,14 +69,14 @@ export default function CreateExerciseScreen() {
         <Text variant="bodyStrong">Nuevo ejercicio</Text>
         <Pressable
           onPress={onSave}
-          disabled={!canSave}
+          disabled={saving}
           style={({ pressed }) => [
             styles.saveButton,
-            { opacity: canSave ? (pressed ? 0.6 : 1) : 0.4 },
+            { opacity: saving ? 0.4 : pressed ? 0.6 : 1 },
           ]}
         >
-          <Text variant="bodyStrong" tone={canSave ? 'primary' : 'muted'} style={{ fontWeight: '700' }}>
-            Guardar
+          <Text variant="bodyStrong" style={{ fontWeight: '700', color: colors.text }}>
+            {saving ? 'Guardando…' : 'Guardar'}
           </Text>
         </Pressable>
       </View>

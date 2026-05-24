@@ -90,8 +90,6 @@ export default function RoutineEditorScreen() {
     load();
   }, [load]);
 
-  const canSave = name.trim().length > 0 && days.some((d) => d.label != null);
-
   const day = days[activeDay]!;
 
   const toggleDay = () => {
@@ -155,9 +153,18 @@ export default function RoutineEditorScreen() {
   };
 
   const save = async () => {
-    if (!canSave) return;
-    setSaving(true);
+    if (saving) return;
     setErrors({});
+    // Validación temprana con mensajes en pantalla
+    const localErrors: Record<string, string> = {};
+    if (name.trim().length === 0) localErrors.name = 'Ponle un nombre a la rutina';
+    if (!days.some((d) => d.label != null))
+      localErrors._form = 'Activa al menos un día de entrenamiento';
+    if (Object.keys(localErrors).length > 0) {
+      setErrors(localErrors);
+      return;
+    }
+    setSaving(true);
     try {
       let rid = routineId;
       if (isNew) {
@@ -225,14 +232,14 @@ export default function RoutineEditorScreen() {
         <Text variant="bodyStrong">{isNew ? 'Nueva rutina' : 'Editar rutina'}</Text>
         <Pressable
           onPress={save}
-          disabled={!canSave || saving}
+          disabled={saving}
           style={({ pressed }) => [
             styles.saveBtn,
-            { opacity: canSave && !saving ? (pressed ? 0.6 : 1) : 0.4 },
+            { opacity: saving ? 0.4 : pressed ? 0.6 : 1 },
           ]}
         >
-          <Text variant="bodyStrong" tone={canSave ? 'primary' : 'muted'}>
-            Guardar
+          <Text variant="bodyStrong" style={{ color: colors.text }}>
+            {saving ? 'Guardando…' : 'Guardar'}
           </Text>
         </Pressable>
       </View>

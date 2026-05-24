@@ -11,10 +11,16 @@ import { colors, radii } from '@/theme/tokens';
 import { Text } from './Text';
 
 type Variant = 'primary' | 'ghost' | 'soft';
+type Size = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps extends Omit<PressableProps, 'style' | 'children'> {
   label: string;
   variant?: Variant;
+  /**
+   * Tamaño explícito que ignora el alto por defecto de la variante.
+   * Útil para igualar alturas cuando hay dos Buttons (p.ej. primary + ghost) en una row.
+   */
+  size?: Size;
   /** Ocupa todo el ancho disponible del padre. */
   fullWidth?: boolean;
   /**
@@ -28,9 +34,12 @@ export interface ButtonProps extends Omit<PressableProps, 'style' | 'children'> 
   style?: StyleProp<ViewStyle>;
 }
 
+const SIZE_HEIGHT: Record<Size, number> = { sm: 36, md: 44, lg: 56 };
+
 export function Button({
   label,
   variant = 'primary',
+  size,
   fullWidth,
   flexed,
   leftIcon,
@@ -41,6 +50,7 @@ export function Button({
   style,
   ...rest
 }: ButtonProps) {
+  const heightOverride = size ? { height: SIZE_HEIGHT[size] } : null;
   const scale = useSharedValue(1);
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
@@ -70,6 +80,7 @@ export function Button({
           styles.base,
           variantStyles.container,
           (fullWidth || flexed) && { width: '100%' },
+          heightOverride,
           disabled && { opacity: 0.45 },
         ]}
       >

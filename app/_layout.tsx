@@ -1,5 +1,7 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as SystemUI from 'expo-system-ui';
+import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ActivityIndicator, View } from 'react-native';
@@ -8,8 +10,18 @@ import { Text } from '@/components/Text';
 import { useDatabaseInit } from '@/hooks/useDatabase';
 import { colors } from '@/theme/tokens';
 
+// Fija el fondo nativo de la ventana antes incluso del primer render: evita el
+// flash blanco entre transiciones de pantalla (cuando React cambia de escena
+// pero el sistema todavía no pintó la siguiente).
+SystemUI.setBackgroundColorAsync(colors.bg).catch(() => {});
+
 export default function RootLayout() {
   const { ready, error } = useDatabaseInit();
+
+  // Refuerza el color por si el async previo no se aplicó a tiempo.
+  useEffect(() => {
+    SystemUI.setBackgroundColorAsync(colors.bg).catch(() => {});
+  }, []);
 
   if (error) {
     return (
@@ -29,14 +41,18 @@ export default function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
       <SafeAreaProvider>
         <StatusBar style="light" />
         <Stack
           screenOptions={{
             headerShown: false,
             contentStyle: { backgroundColor: colors.bg },
+            // navigationBarColor evita franja blanca en Android al volver atrás
+            navigationBarColor: colors.bg,
             animation: 'slide_from_right',
+            // Fondo de la transición (Android): elimina el flash blanco entre escenas
+            animationMatchesGesture: true,
           }}
         >
           <Stack.Screen name="(tabs)" />

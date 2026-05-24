@@ -154,11 +154,19 @@ export default function CalendarTab() {
     setMonth(next.getMonth());
   };
 
+  const [assignError, setAssignError] = useState<string | null>(null);
+
   const assignRoutineToWeek = async (rid: number | null) => {
     if (!assignSheet) return;
-    await setWeekAssignment(assignSheet, rid);
-    setAssignSheet(null);
-    await load();
+    try {
+      await setWeekAssignment(assignSheet, rid);
+      setAssignError(null);
+      setAssignSheet(null);
+      await load();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setAssignError(`No se pudo asignar la rutina: ${msg}`);
+    }
   };
 
   return (
@@ -291,7 +299,7 @@ export default function CalendarTab() {
       >
         <Pressable style={styles.scrim} onPress={() => setAssignSheet(null)}>
           <Pressable style={styles.sheet} onPress={() => undefined}>
-            <SafeAreaView edges={['bottom']} style={{ flex: 1 }}>
+            <SafeAreaView edges={['bottom']}>
             <View style={styles.sheetHandle} />
             <View style={styles.sheetHeader}>
               <View>
@@ -302,7 +310,7 @@ export default function CalendarTab() {
                 <CloseIcon size={16} color={colors.textSec} />
               </IconButton>
             </View>
-            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: space.xl, paddingBottom: 28, gap: 8 }}>
+            <ScrollView contentContainerStyle={{ paddingHorizontal: space.xl, paddingBottom: 28, gap: 8 }}>
               {assignSheet && weekMap.has(assignSheet) ? (
                 <Pressable onPress={() => assignRoutineToWeek(null)} style={styles.removeBtn}>
                   <Text variant="caption" tone="secondary" style={{ fontWeight: '600' }}>
@@ -338,6 +346,11 @@ export default function CalendarTab() {
               {routines.length === 0 ? (
                 <Text tone="muted" variant="caption" style={{ textAlign: 'center', padding: 20 }}>
                   Aún no tienes rutinas. Créalas desde Ejercicios &gt; Rutinas.
+                </Text>
+              ) : null}
+              {assignError ? (
+                <Text tone="bad" variant="caption" style={{ textAlign: 'center', paddingTop: 8 }}>
+                  {assignError}
                 </Text>
               ) : null}
             </ScrollView>
@@ -652,6 +665,9 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopColor: colors.border,
     borderTopWidth: 1,
+    // minHeight asegura que aunque la lista esté vacía o tenga pocos items,
+    // el sheet sea visible y contenga el header.
+    minHeight: 240,
     maxHeight: Dimensions.get('window').height * 0.85,
   },
   sheetHandle: {

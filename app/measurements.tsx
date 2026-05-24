@@ -196,8 +196,12 @@ export default function MeasurementsScreen() {
                       size={28}
                       variant="transparent"
                       onPress={async () => {
-                        await deleteMeasurementEntry(h.id);
-                        if (activeId) await loadEntries(activeId);
+                        try {
+                          await deleteMeasurementEntry(h.id);
+                          if (activeId) await loadEntries(activeId);
+                        } catch (e) {
+                          console.warn('deleteMeasurementEntry:', e);
+                        }
                       }}
                     >
                       <TrashIcon size={14} color={colors.textMut} />
@@ -229,14 +233,19 @@ export default function MeasurementsScreen() {
               <LogEntryForm
                 type={active}
                 onSave={async (value) => {
-                  if (!active) return;
-                  await addMeasurementEntry({
+                  if (!active) return null;
+                  const r = await addMeasurementEntry({
                     measurementTypeId: active.id,
                     value,
                     date: todayIso(),
                   });
+                  if (!r.ok) {
+                    const firstKey = Object.keys(r.errors)[0];
+                    return (firstKey && r.errors[firstKey]) ?? 'No se pudo guardar';
+                  }
                   await loadEntries(active.id);
                   setLogOpen(false);
+                  return null;
                 }}
                 onClose={() => setLogOpen(false)}
               />
@@ -267,11 +276,13 @@ function LogEntryForm({
   onClose,
 }: {
   type: MeasurementType;
-  onSave: (value: number) => void;
+  /** Devuelve un mensaje de error si falla; null si OK. */
+  onSave: (value: number) => Promise<string | null>;
   onClose: () => void;
 }) {
   const [buf, setBuf] = useState<string>('0');
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const onKey = (k: KeyValue) => {
     let b = buf;
@@ -290,14 +301,23 @@ function LogEntryForm({
     setBuf(b);
   };
 
-  const save = () => {
+  const save = async () => {
+    if (saving) return;
     const parsed = parseDecimalInput(buf);
     if (parsed == null || parsed <= 0) {
       setError('Ingresa un valor mayor que 0');
       return;
     }
     setError(null);
-    onSave(parsed);
+    setSaving(true);
+    try {
+      const err = await onSave(parsed);
+      if (err) setError(err);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al guardar');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -455,8 +475,8 @@ function ConfigureForm({
               ))}
             </View>
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-              <Button label="Cancelar" variant="ghost" onPress={() => setAdding(false)} flexed />
-              <Button label="Añadir" onPress={add} flexed />
+              <Button label="Cancelar" variant="ghost" size="lg" onPress={() => setAdding(false)} flexed />
+              <Button label="Añadir" size="lg" onPress={add} flexed />
             </View>
           </View>
         )}

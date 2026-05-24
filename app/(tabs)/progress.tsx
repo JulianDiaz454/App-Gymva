@@ -18,9 +18,9 @@ export default function ProgressTab() {
 
   useFocusEffect(
     useCallback(() => {
-      listExercisesWithStats().then((rows) => {
-        setItems(rows.filter((r) => r.sessionCount > 0));
-      });
+      listExercisesWithStats()
+        .then((rows) => setItems(rows.filter((r) => r.sessionCount > 0)))
+        .catch((e) => console.warn('listExercisesWithStats:', e));
     }, []),
   );
 
