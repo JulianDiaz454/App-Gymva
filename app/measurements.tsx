@@ -455,8 +455,8 @@ function ConfigureForm({
               ))}
             </View>
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-              <Button label="Cancelar" variant="ghost" onPress={() => setAdding(false)} fullWidth />
-              <Button label="Añadir" onPress={add} fullWidth />
+              <Button label="Cancelar" variant="ghost" onPress={() => setAdding(false)} flexed />
+              <Button label="Añadir" onPress={add} flexed />
             </View>
           </View>
         )}

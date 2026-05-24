@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import { Pressable, StyleSheet, View, type PressableProps } from 'react-native';
+import { Pressable, StyleSheet, View, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -15,20 +15,30 @@ type Variant = 'primary' | 'ghost' | 'soft';
 export interface ButtonProps extends Omit<PressableProps, 'style' | 'children'> {
   label: string;
   variant?: Variant;
+  /** Ocupa todo el ancho disponible del padre. */
   fullWidth?: boolean;
+  /**
+   * Comparte espacio con otros hermanos flex (flex: 1). Úsalo para Buttons
+   * lado a lado dentro de una row, en lugar de fullWidth (que rompe el row).
+   */
+  flexed?: boolean;
   leftIcon?: ReactNode;
   rightIcon?: ReactNode;
+  /** Estilo extra para el contenedor exterior animado. */
+  style?: StyleProp<ViewStyle>;
 }
 
 export function Button({
   label,
   variant = 'primary',
   fullWidth,
+  flexed,
   leftIcon,
   rightIcon,
   disabled,
   onPressIn,
   onPressOut,
+  style,
   ...rest
 }: ButtonProps) {
   const scale = useSharedValue(1);
@@ -37,7 +47,14 @@ export function Button({
   const variantStyles = STYLES[variant];
 
   return (
-    <Animated.View style={[fullWidth && { width: '100%' }, animatedStyle]}>
+    <Animated.View
+      style={[
+        fullWidth && { width: '100%' },
+        flexed && { flex: 1 },
+        animatedStyle,
+        style,
+      ]}
+    >
       <Pressable
         {...rest}
         disabled={disabled}
@@ -52,7 +69,7 @@ export function Button({
         style={[
           styles.base,
           variantStyles.container,
-          fullWidth && { width: '100%' },
+          (fullWidth || flexed) && { width: '100%' },
           disabled && { opacity: 0.45 },
         ]}
       >
