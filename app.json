@@ -7,7 +7,9 @@
     "scheme": "gvm",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
+    "icon": "./assets/icon.png",
     "splash": {
+      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#0A0A0B"
     },
@@ -17,6 +19,8 @@
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundImage": "./assets/adaptive-icon-bg.png",
         "backgroundColor": "#0A0A0B"
       },
       "package": "com.gvm.app"
