@@ -34,9 +34,11 @@ export function Screen({
   withTabBar = true,
 }: Props) {
   const insets = useSafeAreaInsets();
+  // Siempre dinámico contra insets.bottom — un valor fijo (e.g. 24) corta
+  // contenido en Android con gesture nav. Regla 8.
   const padBottom = withTabBar
     ? TAB_BAR_HEIGHT + Math.max(insets.bottom, 12) + 16
-    : 24;
+    : Math.max(insets.bottom, 12) + 16;
 
   if (!scroll) {
     return (
