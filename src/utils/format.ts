@@ -8,10 +8,6 @@ const baseFormatter = new Intl.NumberFormat('es-CO', {
   maximumFractionDigits: 2,
 });
 
-const integerFormatter = new Intl.NumberFormat('es-CO', {
-  maximumFractionDigits: 0,
-});
-
 export function formatNumber(value: number | null | undefined, opts?: {
   decimals?: number;
   forceDecimals?: boolean;
@@ -25,20 +21,6 @@ export function formatNumber(value: number | null | undefined, opts?: {
     }).format(value);
   }
   return baseFormatter.format(value);
-}
-
-export function formatInteger(value: number | null | undefined): string {
-  if (value == null || !Number.isFinite(value)) return '—';
-  return integerFormatter.format(value);
-}
-
-export function formatWeight(value: number | null | undefined, unit: string = 'kg'): string {
-  if (value == null || !Number.isFinite(value)) return `— ${unit}`;
-  return `${formatNumber(value)} ${unit}`;
-}
-
-export function formatVolume(value: number | null | undefined): string {
-  return formatWeight(value, 'kg');
 }
 
 /**

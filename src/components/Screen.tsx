@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import { ScrollView, StyleSheet, View, type ViewStyle, type StyleProp } from 'react-native';
+import { ScrollView, StyleSheet, type ViewStyle, type StyleProp } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors } from '@/theme/tokens';
@@ -61,10 +61,6 @@ export function Screen({
       </ScrollView>
     </SafeAreaView>
   );
-}
-
-export function ScreenView({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
-  return <View style={[styles.container, style]}>{children}</View>;
 }
 
 const styles = StyleSheet.create({

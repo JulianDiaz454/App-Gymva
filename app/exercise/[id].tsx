@@ -66,6 +66,22 @@ export default function ExerciseDetailScreen() {
     [history, metric],
   );
 
+  // Stats derivadas memoizadas: recalculan solo cuando cambian las values, no
+  // en cada hover. Para Math.max evitamos el spread (rompe con miles de items).
+  const stats = useMemo(() => {
+    if (values.length === 0) return { last: 0, first: 0, max: 0, change: 0 };
+    const last = values[values.length - 1]!;
+    const first = values[0]!;
+    let max = -Infinity;
+    for (const v of values) if (v > max) max = v;
+    const change = first > 0 ? ((last - first) / first) * 100 : 0;
+    return { last, first, max, change };
+  }, [values]);
+  const { last, first, max, change } = stats;
+
+  // history.reverse() crea un array nuevo en cada render — memoizamos.
+  const historyReversed = useMemo(() => history.slice().reverse(), [history]);
+
   if (loadError) {
     return (
       <Screen withTabBar={false}>
@@ -103,10 +119,6 @@ export default function ExerciseDetailScreen() {
     );
   }
 
-  const last = values[values.length - 1] ?? 0;
-  const first = values[0] ?? 0;
-  const max = Math.max(...values);
-  const change = first > 0 ? ((last - first) / first) * 100 : 0;
   const currentPoint = hoverIdx != null ? history[hoverIdx] : history[history.length - 1];
   const currentValue =
     hoverIdx != null ? values[hoverIdx] ?? last : last;
@@ -208,7 +220,7 @@ export default function ExerciseDetailScreen() {
           Toca una sesión para ver el detalle de cada serie
         </Text>
         <View style={{ gap: 8 }}>
-          {history.slice().reverse().map((h) => {
+          {historyReversed.map((h) => {
             const isOpen = expanded.has(h.sessionId);
             return (
               <Card key={h.sessionId} padding={0}>

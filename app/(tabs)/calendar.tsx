@@ -279,22 +279,25 @@ export default function CalendarTab() {
       </View>
 
       {/* Day detail */}
-      <View style={{ paddingHorizontal: space.xl, paddingTop: 14 }}>
-        <DayDetail
-          year={year}
-          month={month}
-          day={selectedDay}
-          session={sessionDetail}
-          plannedName={plannedNameForDay(selectedDay)}
-          routine={weekRoutineFor([selectedDay]).routine}
-          routineDays={
-            weekRoutineFor([selectedDay]).routine
-              ? routineDays.get(weekRoutineFor([selectedDay]).routine!.id) ?? []
-              : []
-          }
-          exercises={exercises}
-        />
-      </View>
+      {(() => {
+        const selectedRoutine = weekRoutineFor([selectedDay]).routine;
+        return (
+          <View style={{ paddingHorizontal: space.xl, paddingTop: 14 }}>
+            <DayDetail
+              year={year}
+              month={month}
+              day={selectedDay}
+              session={sessionDetail}
+              plannedName={plannedNameForDay(selectedDay)}
+              routine={selectedRoutine}
+              routineDays={
+                selectedRoutine ? routineDays.get(selectedRoutine.id) ?? [] : []
+              }
+              exercises={exercises}
+            />
+          </View>
+        );
+      })()}
 
       {/* Assign-week sheet */}
       <BottomSheet

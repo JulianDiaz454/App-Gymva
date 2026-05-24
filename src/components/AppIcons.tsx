@@ -101,16 +101,6 @@ export function SkipIcon({ size = 18, color = colors.text }: BaseProps) {
   );
 }
 
-export function MoreIcon({ size = 18, color = colors.text }: BaseProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Circle cx="6" cy="12" r="1.6" fill={color} />
-      <Circle cx="12" cy="12" r="1.6" fill={color} />
-      <Circle cx="18" cy="12" r="1.6" fill={color} />
-    </Svg>
-  );
-}
-
 export function EditIcon({ size = 18, color = colors.text }: BaseProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">

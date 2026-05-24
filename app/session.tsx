@@ -28,6 +28,7 @@ import {
   logSet,
   replaceSessionExercise,
   setSkipped,
+  updateSet,
   type SessionFull,
 } from '@/db/queries/sessions';
 import type { Exercise, SetRow } from '@/db/schema';
@@ -345,7 +346,6 @@ export default function SessionScreen() {
     const existingId = setIds[activeSet];
     let result;
     if (existingId != null) {
-      const { updateSet } = await import('@/db/queries/sessions');
       result = await updateSet(existingId, { weight, reps: r });
     } else {
       result = await logSet({
@@ -454,7 +454,7 @@ export default function SessionScreen() {
           const completed = !b.skipped && b.sets.length >= b.targetSets;
           return (
             <View
-              key={i}
+              key={b.exerciseId}
               style={[
                 styles.dot,
                 {
