@@ -1,7 +1,7 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CloseIcon, PlusIcon, TrashIcon } from '@/components/AppIcons';
 import { BottomSheet } from '@/components/BottomSheet';
@@ -11,20 +11,14 @@ import { IconButton } from '@/components/IconButton';
 import { Text } from '@/components/Text';
 import { listExercises } from '@/db/queries/exercises';
 import {
-  addRoutineExercise,
-  clearRoutineDayExercises,
-  createRoutine,
-  deleteRoutineDay,
   getRoutineFull,
-  removeRoutineExercise,
-  setRoutineDay,
-  updateRoutine,
-  updateRoutineExercise,
+  saveRoutineFull,
   type RoutineFull,
 } from '@/db/queries/routines';
 import type { Exercise } from '@/db/schema';
 import { colors, COLOR_CHOICES, radii, space } from '@/theme/tokens';
 import { formatNumber } from '@/utils/format';
+import { goBackSafe } from '@/utils/navigation';
 
 const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const DAY_SHORT = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
@@ -46,6 +40,7 @@ export default function RoutineEditorScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const routineId = id ? Number(id) : null;
   const isNew = routineId == null;
+  const insets = useSafeAreaInsets();
 
   const [full, setFull] = useState<RoutineFull | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
@@ -165,59 +160,28 @@ export default function RoutineEditorScreen() {
       return;
     }
     setSaving(true);
-    try {
-      let rid = routineId;
-      if (isNew) {
-        const r = await createRoutine({ name: name.trim(), color });
-        if (!r.ok) {
-          setErrors(r.errors);
-          setSaving(false);
-          return;
-        }
-        rid = r.routine.id;
-      } else {
-        const r = await updateRoutine(rid!, { name: name.trim(), color });
-        if (!r.ok) {
-          setErrors(r.errors);
-          setSaving(false);
-          return;
-        }
-      }
-
-      // Sincronizar días
-      for (let i = 0; i < 7; i++) {
-        const d = days[i]!;
-        if (d.label == null) {
-          // Día de descanso: borrar si existía
-          if (d.routineDayId != null) await deleteRoutineDay(d.routineDayId);
-          continue;
-        }
-        const rd = await setRoutineDay({
-          routineId: rid!,
-          dayOfWeek: i,
-          label: d.label,
-        });
-        // Borrar ejercicios previos y reinsertar (más simple que diff)
-        await clearRoutineDayExercises(rd.id);
-        for (let ei = 0; ei < d.exercises.length; ei++) {
-          const e = d.exercises[ei]!;
-          await addRoutineExercise({
-            routineDayId: rd.id,
-            exerciseId: e.exerciseId,
-            targetSets: e.targetSets,
-            targetReps: e.targetReps,
-            targetWeight: e.targetWeight,
-            order: ei,
-          });
-        }
-      }
-      router.back();
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setErrors({ _form: msg });
-    } finally {
-      setSaving(false);
+    const result = await saveRoutineFull({
+      routineId,
+      name: name.trim(),
+      color,
+      days: days.map((d, i) => ({
+        dayOfWeek: i,
+        label: d.label,
+        routineDayId: d.routineDayId,
+        exercises: d.exercises.map((e) => ({
+          exerciseId: e.exerciseId,
+          targetSets: e.targetSets,
+          targetReps: e.targetReps,
+          targetWeight: e.targetWeight,
+        })),
+      })),
+    });
+    setSaving(false);
+    if (!result.ok) {
+      setErrors(result.errors);
+      return;
     }
+    goBackSafe();
   };
 
   const exerciseById = (id: number) => exercises.find((e) => e.id === id);
@@ -226,7 +190,7 @@ export default function RoutineEditorScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Top bar */}
       <View style={styles.topBar}>
-        <IconButton onPress={() => router.back()}>
+        <IconButton onPress={() => goBackSafe()}>
           <CloseIcon size={18} color={colors.text} />
         </IconButton>
         <Text variant="bodyStrong">{isNew ? 'Nueva rutina' : 'Editar rutina'}</Text>
@@ -245,7 +209,7 @@ export default function RoutineEditorScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 12) + 24 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >

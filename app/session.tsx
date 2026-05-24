@@ -34,6 +34,7 @@ import type { Exercise, SetRow } from '@/db/schema';
 import { getTodayState, type TodayPlanBlock } from '@/domain/today';
 import { colors, radii, space } from '@/theme/tokens';
 import { displayInputBuffer, formatNumber, parseDecimalInput } from '@/utils/format';
+import { goBackSafe } from '@/utils/navigation';
 
 type Field = 'weight' | 'reps';
 
@@ -80,11 +81,16 @@ export default function SessionScreen() {
 
   const load = useCallback(async () => {
     if (!Number.isFinite(sessionId)) return;
-    const s = await getSession(sessionId);
-    setSession(s);
-    const today = await getTodayState();
-    setPlan(today.planned);
-    setExercises(await listExercises());
+    try {
+      const s = await getSession(sessionId);
+      setSession(s);
+      const today = await getTodayState();
+      setPlan(today.planned);
+      setExercises(await listExercises());
+    } catch (e) {
+      console.warn('session load:', e);
+      setError('No se pudo cargar la sesión. Reintenta o vuelve atrás.');
+    }
   }, [sessionId]);
 
   useEffect(() => {
@@ -141,53 +147,66 @@ export default function SessionScreen() {
 
   const current = blocks[activeIdx];
 
-  // Cierra la sesión de forma segura: si el navigator no puede ir atrás
-  // (caso raro al haber sido remplazado), enviamos al tab inicial.
-  const goBackSafe = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/');
-    }
-  };
-
   // Handlers de los bottom sheets (declarados arriba para usarse también en
   // el early-return del estado "sesión libre sin bloques").
   const ensureBlock = async (): Promise<number | null> => {
     if (!current) return null;
     if (current.sessionExerciseId != null) return current.sessionExerciseId;
-    const sb = await ensureSessionBlock({
-      sessionId,
-      exerciseId: current.exerciseId,
-      wasPlanned: current.routineExerciseId != null,
-      order: activeIdx,
-    });
-    await load();
-    return sb.id;
+    try {
+      const sb = await ensureSessionBlock({
+        sessionId,
+        exerciseId: current.exerciseId,
+        wasPlanned: current.routineExerciseId != null,
+        order: activeIdx,
+      });
+      await load();
+      return sb.id;
+    } catch (e) {
+      console.warn('ensureBlock:', e);
+      setError('No se pudo crear el bloque. Reintenta.');
+      return null;
+    }
   };
 
   const onPickReplace = async (exId: number) => {
     setSheet(null);
-    const blockId = await ensureBlock();
-    if (blockId != null) {
+    try {
+      const blockId = await ensureBlock();
+      if (blockId == null) return;
       await replaceSessionExercise(blockId, exId);
       await load();
+    } catch (e) {
+      console.warn('onPickReplace:', e);
+      setError('No se pudo sustituir el ejercicio.');
     }
   };
 
   const onPickAdd = async (exId: number) => {
     setSheet(null);
-    await ensureSessionBlock({
-      sessionId,
-      exerciseId: exId,
-      wasPlanned: false,
-      order: blocks.length,
-    });
-    await load();
-    setActiveIdx(blocks.length);
+    try {
+      await ensureSessionBlock({
+        sessionId,
+        exerciseId: exId,
+        wasPlanned: false,
+        order: blocks.length,
+      });
+      await load();
+      setActiveIdx(blocks.length);
+    } catch (e) {
+      console.warn('onPickAdd:', e);
+      setError('No se pudo añadir el ejercicio.');
+    }
   };
 
-  // Inicializa buffers cuando cambia el bloque activo
+  // Inicializa buffers cuando cambia el bloque activo.
+  // Deps deliberadas: `activeIdx` + identidad del bloque + cantidad de sets.
+  // NO usar `[activeIdx, current]` directamente: `current` se re-crea cada
+  // `load()`, y eso pisaba el input pendiente del usuario en mitad de un
+  // tipeo. Con estas deps el efecto solo corre cuando cambia el ejercicio
+  // o se añaden/quitan sets persistidos, no en cada refresh de DB.
+  const currentSessionExerciseId = current?.sessionExerciseId ?? null;
+  const currentExerciseId = current?.exerciseId ?? null;
+  const currentSetsLen = current?.sets.length ?? 0;
   useEffect(() => {
     if (!current) return;
     const existingSets = current.sets;
@@ -209,7 +228,8 @@ export default function SessionScreen() {
     setField('weight');
     setBuffer(null);
     setError(null);
-  }, [activeIdx, current]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeIdx, currentExerciseId, currentSessionExerciseId, currentSetsLen]);
 
   if (!Number.isFinite(sessionId) || !session) {
     return (
@@ -374,7 +394,17 @@ export default function SessionScreen() {
 
   const removeSet = async (idx: number) => {
     const id = setIds[idx];
-    if (id != null) await deleteSet(id);
+    // Persistencia primero: si falla, NO actualizamos el estado local —
+    // evita la serie "fantasma" que reaparece al próximo load().
+    if (id != null) {
+      try {
+        await deleteSet(id);
+      } catch (e) {
+        console.warn('removeSet:', e);
+        setError('No se pudo borrar la serie.');
+        return;
+      }
+    }
     setWeights((prev) => prev.filter((_, i) => i !== idx));
     setReps((prev) => prev.filter((_, i) => i !== idx));
     setSetIds((prev) => prev.filter((_, i) => i !== idx));
@@ -383,10 +413,16 @@ export default function SessionScreen() {
   };
 
   const onSkip = async () => {
-    const blockId = await ensureBlock();
-    if (blockId != null) {
-      await setSkipped(blockId, true);
-      await load();
+    try {
+      const blockId = await ensureBlock();
+      if (blockId != null) {
+        await setSkipped(blockId, true);
+        await load();
+      }
+    } catch (e) {
+      console.warn('onSkip:', e);
+      setError('No se pudo saltar el ejercicio.');
+      return;
     }
     const nextBlock = blocks.findIndex((b, i) => i > activeIdx && !b.skipped && b.sets.length === 0);
     if (nextBlock >= 0) setActiveIdx(nextBlock);

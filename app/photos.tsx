@@ -7,6 +7,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PlusIcon, TrashIcon } from '@/components/AppIcons';
 import { BackBar } from '@/components/BackBar';
@@ -30,6 +31,7 @@ async function ensurePhotosDir(): Promise<void> {
 }
 
 export default function PhotosScreen() {
+  const insets = useSafeAreaInsets();
   const [photos, setPhotos] = useState<ProgressPhoto[]>([]);
 
   const load = useCallback(async () => {
@@ -102,7 +104,7 @@ export default function PhotosScreen() {
           data={photos}
           keyExtractor={(p) => String(p.id)}
           numColumns={2}
-          contentContainerStyle={{ padding: space.xl, gap: 12, paddingBottom: 120 }}
+          contentContainerStyle={{ padding: space.xl, gap: 12, paddingBottom: Math.max(insets.bottom, 12) + 32 }}
           columnWrapperStyle={{ gap: 12 }}
           renderItem={({ item }) => (
             <View style={styles.photoCard}>

@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
   Keyboard,
@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CheckIcon, ChevronIcon, CloseIcon } from '@/components/AppIcons';
 import { ExerciseIcon } from '@/components/ExerciseIcon';
@@ -25,9 +25,11 @@ import {
   radii,
   space,
 } from '@/theme/tokens';
+import { goBackSafe } from '@/utils/navigation';
 
 export default function CreateExerciseScreen() {
   const { initialName } = useLocalSearchParams<{ initialName?: string }>();
+  const insets = useSafeAreaInsets();
   const [name, setName] = useState<string>(initialName ?? '');
   const [icon, setIcon] = useState<string>('💪');
   const [color, setColor] = useState<string>(COLOR_CHOICES[8]!);
@@ -56,14 +58,14 @@ export default function CreateExerciseScreen() {
       setErrors(result.errors);
       return;
     }
-    router.back();
+    goBackSafe();
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Top bar */}
       <View style={styles.topBar}>
-        <IconButton onPress={() => router.back()}>
+        <IconButton onPress={() => goBackSafe()}>
           <CloseIcon size={18} color={colors.text} />
         </IconButton>
         <Text variant="bodyStrong">Nuevo ejercicio</Text>
@@ -82,7 +84,7 @@ export default function CreateExerciseScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={{ padding: space.xl, paddingBottom: 32 }}
+        contentContainerStyle={{ padding: space.xl, paddingBottom: Math.max(insets.bottom, 12) + 24 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >

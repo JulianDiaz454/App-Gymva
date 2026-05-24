@@ -187,6 +187,103 @@ export async function removeRoutineExercise(id: number): Promise<void> {
   await db.delete(routineExercises).where(eq(routineExercises.id, id));
 }
 
+// ── Save atómico (todo o nada) ───────────────────────────
+export interface SaveRoutineFullInput {
+  routineId: number | null;
+  name: string;
+  color: string;
+  days: Array<{
+    dayOfWeek: number;
+    label: string | null;
+    routineDayId: number | null;
+    exercises: Array<{
+      exerciseId: number;
+      targetSets: number;
+      targetReps: number;
+      targetWeight: number | null;
+    }>;
+  }>;
+}
+
+/**
+ * Persiste rutina + días + ejercicios en una sola transacción.
+ * Si algo falla, NADA se aplica — evita el bug "rutina padre quedó
+ * creada pero los días no", que dejaba al usuario con una rutina
+ * inconsistente sin enterarse.
+ */
+export async function saveRoutineFull(
+  input: SaveRoutineFullInput,
+): Promise<{ ok: true; routineId: number } | { ok: false; errors: Record<string, string> }> {
+  const parsed = routineInputSchema.safeParse({ name: input.name, color: input.color });
+  if (!parsed.success) return { ok: false, errors: formatZodErrors(parsed) };
+
+  try {
+    const routineId = await db.transaction(async (tx) => {
+      let rid = input.routineId;
+      if (rid == null) {
+        const [row] = await tx.insert(routines).values(parsed.data).returning();
+        if (!row) throw new Error('No se pudo crear la rutina');
+        rid = row.id;
+      } else {
+        await tx
+          .update(routines)
+          .set({ ...parsed.data, updatedAt: new Date() })
+          .where(eq(routines.id, rid));
+      }
+
+      for (const d of input.days) {
+        if (d.label == null) {
+          if (d.routineDayId != null) {
+            await tx.delete(routineDays).where(eq(routineDays.id, d.routineDayId));
+          }
+          continue;
+        }
+        // Upsert día
+        let dayId: number;
+        if (d.routineDayId != null) {
+          await tx.update(routineDays).set({ label: d.label }).where(eq(routineDays.id, d.routineDayId));
+          dayId = d.routineDayId;
+        } else {
+          const existing = await tx
+            .select()
+            .from(routineDays)
+            .where(and(eq(routineDays.routineId, rid), eq(routineDays.dayOfWeek, d.dayOfWeek)))
+            .limit(1);
+          if (existing[0]) {
+            await tx.update(routineDays).set({ label: d.label }).where(eq(routineDays.id, existing[0].id));
+            dayId = existing[0].id;
+          } else {
+            const [row] = await tx
+              .insert(routineDays)
+              .values({ routineId: rid, dayOfWeek: d.dayOfWeek, label: d.label })
+              .returning();
+            if (!row) throw new Error('No se pudo crear el día');
+            dayId = row.id;
+          }
+        }
+        // Re-sincronizar ejercicios (borrar + insertar) — más simple que diff
+        await tx.delete(routineExercises).where(eq(routineExercises.routineDayId, dayId));
+        for (let i = 0; i < d.exercises.length; i++) {
+          const e = d.exercises[i]!;
+          await tx.insert(routineExercises).values({
+            routineDayId: dayId,
+            exerciseId: e.exerciseId,
+            targetSets: e.targetSets,
+            targetReps: e.targetReps,
+            targetWeight: e.targetWeight,
+            order: i,
+          });
+        }
+      }
+      return rid;
+    });
+    return { ok: true, routineId };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, errors: { _form: msg } };
+  }
+}
+
 // ── Semana ────────────────────────────────────────────────
 export async function getWeekAssignment(weekStart: string): Promise<number | null> {
   const rows = await db

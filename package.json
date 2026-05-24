@@ -39,10 +39,10 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
-    "@types/react": "~19.0.10",
+    "@types/react": "~19.1.17",
     "babel-plugin-module-resolver": "^5.0.2",
     "drizzle-kit": "^0.28.1",
-    "typescript": "~5.6.3"
+    "typescript": "~5.9.3"
   },
   "private": true
 }

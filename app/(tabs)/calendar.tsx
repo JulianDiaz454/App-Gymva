@@ -54,10 +54,11 @@ export default function CalendarTab() {
     setSessions(ses);
     setExercises(exs);
     setWeekMap(new Map(was.map((w) => [w.weekStart, w.routineId])));
+    const fulls = await Promise.all(rs.map((r) => getRoutineFull(r.id)));
     const m = new Map<number, RoutineFull['days']>();
-    for (const r of rs) {
-      const f = await getRoutineFull(r.id);
-      if (f) m.set(r.id, f.days);
+    for (let i = 0; i < rs.length; i++) {
+      const f = fulls[i];
+      if (f) m.set(rs[i]!.id, f.days);
     }
     setRoutineDays(m);
   }, [year, month]);

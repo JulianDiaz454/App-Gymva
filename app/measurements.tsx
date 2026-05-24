@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
+import { goBackSafe } from '@/utils/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BackIcon, CloseIcon, EditIcon, PlusIcon, TrashIcon } from '@/components/AppIcons';
 import { Button } from '@/components/Button';
@@ -28,6 +29,7 @@ const UNIT_CHOICES = ['cm', 'kg', '%', 'mm', 'in'];
 const ICON_CHOICES = ['📏', '💪', '🦵', '🫀', '🔥', '⚖️', '🎯', '📐', '🧍', '🏋️'];
 
 export default function MeasurementsScreen() {
+  const insets = useSafeAreaInsets();
   const [types, setTypes] = useState<MeasurementType[]>([]);
   const [activeId, setActiveId] = useState<number | null>(null);
   const [entries, setEntries] = useState<MeasurementEntry[]>([]);
@@ -61,7 +63,7 @@ export default function MeasurementsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.topBar}>
-        <IconButton onPress={() => router.back()}>
+        <IconButton onPress={goBackSafe}>
           <BackIcon size={18} color={colors.text} />
         </IconButton>
         <Text variant="bodyStrong">Peso y medidas</Text>
@@ -70,7 +72,7 @@ export default function MeasurementsScreen() {
         </IconButton>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 12) + 24 }} showsVerticalScrollIndicator={false}>
         {/* Tabs */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabRow}>
           {types.map((t) => {
