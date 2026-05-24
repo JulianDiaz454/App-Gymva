@@ -31,7 +31,7 @@ export default function ProgressTab() {
         <EmptyState
           emoji="📊"
           title="Sin datos todavía"
-          message="Tus gráficas aparecerán aquí cuando registres tu primera serie."
+          message="Las gráficas aparecen cuando registras al menos una serie con peso y reps en la pestaña Hoy. Saltar un ejercicio no cuenta como dato."
         />
       </Screen>
     );

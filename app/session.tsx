@@ -10,7 +10,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   CloseIcon,
-  MoreIcon,
   PlusIcon,
   SearchIcon,
   SkipIcon,
@@ -18,7 +17,6 @@ import {
 } from '@/components/AppIcons';
 import { BottomSheet } from '@/components/BottomSheet';
 import { ExerciseIcon } from '@/components/ExerciseIcon';
-import { FieldError } from '@/components/FieldError';
 import { IconButton } from '@/components/IconButton';
 import { NumericKeypad, type KeyValue } from '@/components/NumericKeypad';
 import { Text } from '@/components/Text';
@@ -143,6 +141,16 @@ export default function SessionScreen() {
 
   const current = blocks[activeIdx];
 
+  // Cierra la sesión de forma segura: si el navigator no puede ir atrás
+  // (caso raro al haber sido remplazado), enviamos al tab inicial.
+  const goBackSafe = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
+
   // Handlers de los bottom sheets (declarados arriba para usarse también en
   // el early-return del estado "sesión libre sin bloques").
   const ensureBlock = async (): Promise<number | null> => {
@@ -216,9 +224,9 @@ export default function SessionScreen() {
   // Sesión libre sin plan ni bloques aún: CTA para añadir el primer ejercicio.
   if (!current) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.topBar}>
-          <IconButton onPress={() => router.back()}>
+          <IconButton onPress={goBackSafe}>
             <CloseIcon size={18} color={colors.text} />
           </IconButton>
           <View style={{ flex: 1, alignItems: 'center' }}>
@@ -350,7 +358,7 @@ export default function SessionScreen() {
       if (nextBlock >= 0) {
         setActiveIdx(nextBlock);
       } else {
-        router.back();
+        goBackSafe();
       }
     }
   };
@@ -382,14 +390,14 @@ export default function SessionScreen() {
     }
     const nextBlock = blocks.findIndex((b, i) => i > activeIdx && !b.skipped && b.sets.length === 0);
     if (nextBlock >= 0) setActiveIdx(nextBlock);
-    else router.back();
+    else goBackSafe();
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* Top bar */}
       <View style={styles.topBar}>
-        <IconButton onPress={() => router.back()}>
+        <IconButton onPress={goBackSafe}>
           <CloseIcon size={18} color={colors.text} />
         </IconButton>
         <View style={{ flex: 1, alignItems: 'center' }}>
@@ -400,9 +408,8 @@ export default function SessionScreen() {
             Sesión
           </Text>
         </View>
-        <IconButton>
-          <MoreIcon size={18} color={colors.text} />
-        </IconButton>
+        {/* Espacio reservado para mantener el título centrado sin botón derecho */}
+        <View style={{ width: 44 }} />
       </View>
 
       {/* Progress dots */}
@@ -523,7 +530,7 @@ export default function SessionScreen() {
           style={{
             fontSize: 80,
             fontWeight: '600',
-            color: colors.text,
+            color: error ? colors.bad : colors.text,
             letterSpacing: -2.4,
             lineHeight: 84,
           }}
@@ -533,7 +540,21 @@ export default function SessionScreen() {
         <Text variant="caption" tone="muted" style={{ marginTop: 4, fontWeight: '500' }}>
           {field === 'weight' ? 'kilogramos' : 'repeticiones'}
         </Text>
-        {error ? <FieldError message={error} /> : null}
+        {error ? (
+          <View style={{
+            marginTop: 10,
+            paddingHorizontal: 14,
+            paddingVertical: 8,
+            backgroundColor: 'rgba(248,113,113,0.12)',
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: 'rgba(248,113,113,0.4)',
+          }}>
+            <Text variant="caption" tone="bad" style={{ fontWeight: '600' }}>
+              {error}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       {/* Keypad */}
@@ -719,7 +740,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 12,
     paddingTop: 4,
-    paddingBottom: 24,
+    paddingBottom: 12,
     gap: 6,
   },
   actionBtn: {

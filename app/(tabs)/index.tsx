@@ -56,9 +56,14 @@ export default function TodayScreen() {
     return m;
   }, [sessionBlocks]);
 
+  // Una serie cuenta como atendida si está completada o si fue saltada
+  // (saltada = decisión explícita del usuario de no hacerla hoy).
+  const attended = blocks.filter(
+    (b) => completedByExercise.has(b.exerciseId) || skippedByExercise.has(b.exerciseId),
+  ).length;
   const done = blocks.filter((b) => completedByExercise.has(b.exerciseId)).length;
   const total = blocks.length;
-  const allDone = total > 0 && done === total;
+  const allDone = total > 0 && attended === total;
 
   if (!state) return null;
 
@@ -134,11 +139,13 @@ export default function TodayScreen() {
       <View style={{ paddingHorizontal: space.xl, paddingTop: 16 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
           <Text variant="caption" tone="secondary">Progreso de hoy</Text>
-          <Text variant="caption" tone="secondary" tabular>{done}/{total}</Text>
+          <Text variant="caption" tone="secondary" tabular>
+            {attended}/{total}
+          </Text>
         </View>
         <View style={styles.progressTrack}>
           <View
-            style={[styles.progressBar, { width: `${total > 0 ? (done / total) * 100 : 0}%` }]}
+            style={[styles.progressBar, { width: `${total > 0 ? (attended / total) * 100 : 0}%` }]}
           />
         </View>
       </View>
