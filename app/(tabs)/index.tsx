@@ -20,6 +20,7 @@ import { formatNumber } from '@/utils/format';
 
 export default function TodayScreen() {
   const [state, setState] = useState<TodayState | null>(null);
+  const [startError, setStartError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const s = await getTodayState();
@@ -62,11 +63,21 @@ export default function TodayScreen() {
   if (!state) return null;
 
   const startSession = async (blockIdx = 0) => {
+    setStartError(null);
     let sessionId = state.session?.id;
     if (!sessionId) {
-      const r = await createSession({ date: state.date, routineDayId: state.routineDayId });
-      if (!r.ok) return;
-      sessionId = r.session.id;
+      try {
+        const r = await createSession({ date: state.date, routineDayId: state.routineDayId });
+        if (!r.ok) {
+          const firstKey = Object.keys(r.errors)[0];
+          setStartError((firstKey && r.errors[firstKey]) ?? 'No se pudo crear la sesión');
+          return;
+        }
+        sessionId = r.session.id;
+      } catch (e) {
+        setStartError(e instanceof Error ? e.message : 'No se pudo crear la sesión');
+        return;
+      }
     }
     router.push({
       pathname: '/session',
@@ -86,7 +97,12 @@ export default function TodayScreen() {
               : 'Aún no tienes rutina asignada. Crea una desde Ejercicios > Rutinas y asígnala a la semana actual.'
           }
           action={
-            <Button label="Entrenar libre" variant="ghost" onPress={() => startSession(0)} />
+            <View style={{ alignItems: 'center', gap: 10 }}>
+              <Button label="Entrenar libre" variant="ghost" onPress={() => startSession(0)} />
+              {startError ? (
+                <Text variant="caption" tone="bad">{startError}</Text>
+              ) : null}
+            </View>
           }
         />
       </Screen>
@@ -138,6 +154,11 @@ export default function TodayScreen() {
           }}
           rightIcon={<ChevronIcon size={14} color={colors.bg} dir="right" />}
         />
+        {startError ? (
+          <Text variant="caption" tone="bad" style={{ textAlign: 'center', marginTop: 10 }}>
+            {startError}
+          </Text>
+        ) : null}
       </View>
 
       {/* Exercise list */}

@@ -6,6 +6,8 @@
 
 import { z } from 'zod';
 
+import { toIsoDate } from '@/utils/date';
+
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -36,10 +38,13 @@ export const isoDateSchema = z
   .regex(ISO_DATE_RE, 'Fecha inválida (formato YYYY-MM-DD)')
   .refine((s) => !Number.isNaN(new Date(s + 'T00:00:00').getTime()), 'Fecha inválida');
 
-export const notFutureDateSchema = isoDateSchema.refine((s) => {
-  const d = new Date(s + 'T23:59:59');
-  return d.getTime() <= Date.now();
-}, 'La fecha no puede ser futura');
+// Comparamos como cadenas ISO para evitar líos de zona horaria y de hora del día.
+// El bug previo construía `today 23:59:59` y lo comparaba con Date.now() actual,
+// lo cual rechazaba la fecha de HOY salvo en el último segundo del día.
+export const notFutureDateSchema = isoDateSchema.refine(
+  (s) => s <= toIsoDate(new Date()),
+  'La fecha no puede ser futura',
+);
 
 export const notesSchema = z
   .string()

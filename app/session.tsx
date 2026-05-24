@@ -143,6 +143,42 @@ export default function SessionScreen() {
 
   const current = blocks[activeIdx];
 
+  // Handlers de los bottom sheets (declarados arriba para usarse también en
+  // el early-return del estado "sesión libre sin bloques").
+  const ensureBlock = async (): Promise<number | null> => {
+    if (!current) return null;
+    if (current.sessionExerciseId != null) return current.sessionExerciseId;
+    const sb = await ensureSessionBlock({
+      sessionId,
+      exerciseId: current.exerciseId,
+      wasPlanned: current.routineExerciseId != null,
+      order: activeIdx,
+    });
+    await load();
+    return sb.id;
+  };
+
+  const onPickReplace = async (exId: number) => {
+    setSheet(null);
+    const blockId = await ensureBlock();
+    if (blockId != null) {
+      await replaceSessionExercise(blockId, exId);
+      await load();
+    }
+  };
+
+  const onPickAdd = async (exId: number) => {
+    setSheet(null);
+    await ensureSessionBlock({
+      sessionId,
+      exerciseId: exId,
+      wasPlanned: false,
+      order: blocks.length,
+    });
+    await load();
+    setActiveIdx(blocks.length);
+  };
+
   // Inicializa buffers cuando cambia el bloque activo
   useEffect(() => {
     if (!current) return;
@@ -167,12 +203,55 @@ export default function SessionScreen() {
     setError(null);
   }, [activeIdx, current]);
 
-  if (!Number.isFinite(sessionId) || !session || !current) {
+  if (!Number.isFinite(sessionId) || !session) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <Text tone="secondary">Cargando…</Text>
         </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Sesión libre sin plan ni bloques aún: CTA para añadir el primer ejercicio.
+  if (!current) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.topBar}>
+          <IconButton onPress={() => router.back()}>
+            <CloseIcon size={18} color={colors.text} />
+          </IconButton>
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <Text variant="eyebrow" tone="muted">Sesión libre</Text>
+            <Text variant="caption" style={{ fontWeight: '600' }}>Sin plan</Text>
+          </View>
+          <View style={{ width: 44 }} />
+        </View>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20, padding: 32 }}>
+          <Text style={{ fontSize: 56 }}>💪</Text>
+          <Text variant="title" style={{ textAlign: 'center' }}>Empieza añadiendo un ejercicio</Text>
+          <Text variant="caption" tone="secondary" style={{ textAlign: 'center', maxWidth: 280 }}>
+            No hay nada planeado para hoy. Elige el primer ejercicio de tu catálogo y construye la sesión sobre la marcha.
+          </Text>
+          <Pressable
+            onPress={() => setSheet('add')}
+            style={({ pressed }) => [
+              { backgroundColor: colors.text, paddingHorizontal: 24, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 },
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <PlusIcon size={18} color={colors.bg} />
+            <Text variant="bodyStrong" style={{ color: colors.bg, fontWeight: '700' }}>Añadir ejercicio</Text>
+          </Pressable>
+        </View>
+        <BottomSheet
+          visible={sheet === 'add'}
+          onClose={() => setSheet(null)}
+          title="Añadir ejercicio"
+          tall
+        >
+          <ExerciseList exercises={exercises} onPick={onPickAdd} />
+        </BottomSheet>
       </SafeAreaView>
     );
   }
@@ -215,18 +294,6 @@ export default function SessionScreen() {
     setField(next);
     setBuffer(null);
     setError(null);
-  };
-
-  const ensureBlock = async (): Promise<number | null> => {
-    if (current.sessionExerciseId != null) return current.sessionExerciseId;
-    const sb = await ensureSessionBlock({
-      sessionId,
-      exerciseId: current.exerciseId,
-      wasPlanned: current.routineExerciseId != null,
-      order: activeIdx,
-    });
-    await load();
-    return sb.id;
   };
 
   const saveSet = async () => {
@@ -316,27 +383,6 @@ export default function SessionScreen() {
     const nextBlock = blocks.findIndex((b, i) => i > activeIdx && !b.skipped && b.sets.length === 0);
     if (nextBlock >= 0) setActiveIdx(nextBlock);
     else router.back();
-  };
-
-  const onPickReplace = async (exId: number) => {
-    setSheet(null);
-    const blockId = await ensureBlock();
-    if (blockId != null) {
-      await replaceSessionExercise(blockId, exId);
-      await load();
-    }
-  };
-
-  const onPickAdd = async (exId: number) => {
-    setSheet(null);
-    await ensureSessionBlock({
-      sessionId,
-      exerciseId: exId,
-      wasPlanned: false,
-      order: blocks.length,
-    });
-    await load();
-    setActiveIdx(blocks.length); // se renderiza al final tras load
   };
 
   return (
