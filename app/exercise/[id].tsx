@@ -45,7 +45,7 @@ export default function ExerciseDetailScreen() {
 
   if (!ex) {
     return (
-      <Screen>
+      <Screen withTabBar={false}>
         <EmptyState emoji="❓" title="Ejercicio no encontrado" />
       </Screen>
     );
@@ -53,7 +53,7 @@ export default function ExerciseDetailScreen() {
 
   if (history.length === 0) {
     return (
-      <Screen>
+      <Screen withTabBar={false}>
         <BackBar />
         <View style={styles.hero}>
           <ExerciseIcon icon={ex.icon} color={ex.color} size="lg" />
@@ -82,7 +82,7 @@ export default function ExerciseDetailScreen() {
   const unit = metric === 'top' ? 'kg' : 'kg';
 
   return (
-    <Screen>
+    <Screen withTabBar={false}>
       <BackBar
         right={
           <Text variant="caption" style={{ fontWeight: '600', minWidth: 100, textAlign: 'right' }}>

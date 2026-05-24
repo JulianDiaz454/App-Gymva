@@ -42,7 +42,7 @@ export default function RoutinesListScreen() {
   );
 
   return (
-    <Screen>
+    <Screen withTabBar={false}>
       <BackBar />
       <Header
         eyebrow="Plantillas semanales"

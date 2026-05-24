@@ -74,7 +74,7 @@ export default function PhotosScreen() {
   };
 
   return (
-    <Screen scroll={false}>
+    <Screen scroll={false} withTabBar={false}>
       <BackBar />
       <Header
         eyebrow="Galería"

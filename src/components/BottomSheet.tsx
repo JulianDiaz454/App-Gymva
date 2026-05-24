@@ -37,11 +37,17 @@ export function BottomSheet({
     ? { height: screenH * 0.9 }
     : { maxHeight: screenH * 0.88 };
 
+  // Layout clave para que el scroll interior funcione al primer toque:
+  // - El scrim es un Pressable detrás (StyleSheet.absoluteFill) que cierra al
+  //   tocar fuera.
+  // - El sheet es un View plano por encima (no Pressable), así no compite con
+  //   los gestos de su ScrollView hijo.
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.scrim} onPress={onClose}>
-        <Pressable style={[styles.sheet, sheetStyle]} onPress={() => undefined}>
-          <SafeAreaView edges={['bottom']} style={{ flex: 1 }}>
+      <View style={styles.root}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <View style={[styles.sheet, sheetStyle]}>
+          <SafeAreaView edges={['bottom']} style={tall ? { flex: 1 } : undefined}>
             <View style={styles.handle} />
             {(title || eyebrow) && (
               <View style={styles.header}>
@@ -59,23 +65,25 @@ export function BottomSheet({
               </View>
             )}
             <View
-              style={{
-                flex: 1,
-                paddingHorizontal: contentPadding ?? space.xl,
-                paddingBottom: contentPadding === 0 ? 0 : 12,
-              }}
+              style={[
+                tall && { flex: 1 },
+                {
+                  paddingHorizontal: contentPadding ?? space.xl,
+                  paddingBottom: contentPadding === 0 ? 0 : 12,
+                },
+              ]}
             >
               {children}
             </View>
           </SafeAreaView>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  scrim: {
+  root: {
     flex: 1,
     backgroundColor: colors.overlay,
     justifyContent: 'flex-end',

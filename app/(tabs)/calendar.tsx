@@ -297,8 +297,9 @@ export default function CalendarTab() {
         animationType="slide"
         onRequestClose={() => setAssignSheet(null)}
       >
-        <Pressable style={styles.scrim} onPress={() => setAssignSheet(null)}>
-          <Pressable style={styles.sheet} onPress={() => undefined}>
+        <View style={styles.scrim}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setAssignSheet(null)} />
+          <View style={styles.sheet}>
             <SafeAreaView edges={['bottom']}>
             <View style={styles.sheetHandle} />
             <View style={styles.sheetHeader}>
@@ -355,8 +356,8 @@ export default function CalendarTab() {
               ) : null}
             </ScrollView>
             </SafeAreaView>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </Screen>
   );

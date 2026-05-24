@@ -227,8 +227,9 @@ export default function MeasurementsScreen() {
 
       {/* Log modal */}
       <Modal visible={logOpen && active != null} transparent animationType="slide" onRequestClose={() => setLogOpen(false)}>
-        <Pressable style={styles.scrim} onPress={() => setLogOpen(false)}>
-          <Pressable style={styles.sheet} onPress={() => undefined}>
+        <View style={styles.scrim}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setLogOpen(false)} />
+          <View style={styles.sheet}>
             {active ? (
               <LogEntryForm
                 type={active}
@@ -250,21 +251,22 @@ export default function MeasurementsScreen() {
                 onClose={() => setLogOpen(false)}
               />
             ) : null}
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
 
       {/* Configure modal */}
       <Modal visible={configOpen} transparent animationType="slide" onRequestClose={() => setConfigOpen(false)}>
-        <Pressable style={styles.scrim} onPress={() => setConfigOpen(false)}>
-          <Pressable style={[styles.sheet, styles.sheetTall]} onPress={() => undefined}>
+        <View style={styles.scrim}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setConfigOpen(false)} />
+          <View style={[styles.sheet, styles.sheetTall]}>
             <ConfigureForm
               types={types}
               onClose={() => setConfigOpen(false)}
               onRefresh={loadTypes}
             />
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
