@@ -129,6 +129,29 @@ export default function ExercisesTab() {
         })}
       </ScrollView>
 
+      {/* Acceso a otras secciones — arriba para no quedar enterrado bajo un
+          catálogo largo (antes había que scrollear hasta el fondo). */}
+      <View style={{ paddingHorizontal: space.xl, paddingTop: space.md, gap: 8 }}>
+        <MoreCard
+          emoji="📋"
+          title="Rutinas"
+          subtitle="Plantillas semanales para entrenar"
+          onPress={() => router.push('/routines')}
+        />
+        <MoreCard
+          emoji="📏"
+          title="Peso y medidas"
+          subtitle="Registra tu evolución corporal"
+          onPress={() => router.push('/measurements')}
+        />
+        <MoreCard
+          emoji="📷"
+          title="Fotos de progreso"
+          subtitle="Galería antes/después"
+          onPress={() => router.push('/photos')}
+        />
+      </View>
+
       {/* Groups */}
       <View style={{ paddingHorizontal: space.xl, paddingTop: space.md }}>
         {groups.map(([muscle, list]) => (
@@ -175,31 +198,6 @@ export default function ExercisesTab() {
             />
           </View>
         ) : null}
-
-        {/* Acceso a otras secciones */}
-        <View style={{ marginTop: 8, gap: 8 }}>
-          <Text variant="section" tone="muted" style={{ marginBottom: 6 }}>
-            Más
-          </Text>
-          <MoreCard
-            emoji="📋"
-            title="Rutinas"
-            subtitle="Plantillas semanales para entrenar"
-            onPress={() => router.push('/routines')}
-          />
-          <MoreCard
-            emoji="📏"
-            title="Peso y medidas"
-            subtitle="Registra tu evolución corporal"
-            onPress={() => router.push('/measurements')}
-          />
-          <MoreCard
-            emoji="📷"
-            title="Fotos de progreso"
-            subtitle="Galería antes/después"
-            onPress={() => router.push('/photos')}
-          />
-        </View>
       </View>
     </Screen>
   );
