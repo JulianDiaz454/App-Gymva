@@ -6,7 +6,6 @@ import { CheckIcon, ChevronIcon, ClockIcon } from '@/components/AppIcons';
 import { BottomSheet } from '@/components/BottomSheet';
 import { Card } from '@/components/Card';
 import { ExerciseIcon } from '@/components/ExerciseIcon';
-import { Header } from '@/components/Header';
 import { IconButton } from '@/components/IconButton';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
@@ -18,10 +17,9 @@ import {
   setWeekAssignment,
   type RoutineFull,
 } from '@/db/queries/routines';
-import type { Routine } from '@/db/schema';
+import type { Routine , Exercise } from '@/db/schema';
 import { getSessionForDate, type SessionFull } from '@/db/queries/sessions';
 import { listExercisesIncludingArchived } from '@/db/queries/exercises';
-import type { Exercise } from '@/db/schema';
 import { colors, radii, space } from '@/theme/tokens';
 import { DOW_LONG_ES, isoDayOfWeek, MONTHS_FULL_ES, toIsoDate, weekStartIso } from '@/utils/date';
 import { formatNumber } from '@/utils/format';
@@ -74,8 +72,8 @@ export default function CalendarTab() {
     const firstDow = new Date(year, month, 1).getDay();
     const isoFirst = (firstDow + 6) % 7;
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const weeks: Array<Array<number | null>> = [];
-    let cur: Array<number | null> = [];
+    const weeks: (number | null)[][] = [];
+    let cur: (number | null)[] = [];
     for (let i = 0; i < isoFirst; i++) cur.push(null);
     for (let d = 1; d <= daysInMonth; d++) {
       cur.push(d);
@@ -100,7 +98,7 @@ export default function CalendarTab() {
     return m;
   }, [sessions]);
 
-  const weekRoutineFor = (week: Array<number | null>) => {
+  const weekRoutineFor = (week: (number | null)[]) => {
     const firstDay = week.find((d) => d !== null) ?? week[0];
     if (firstDay == null) return { weekStart: '', routine: null };
     const ws = weekStartIso(new Date(year, month, firstDay));

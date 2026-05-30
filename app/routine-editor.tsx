@@ -1,5 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -27,14 +27,14 @@ const DAY_SHORT = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
 interface DayState {
   routineDayId: number | null;
   label: string | null;
-  exercises: Array<{
+  exercises: {
     id: number | null; // routine_exercise id
     exerciseId: number;
     targetSets: number;
     targetReps: number;
     targetWeight: number | null;
     order: number;
-  }>;
+  }[];
 }
 
 export default function RoutineEditorScreen() {
@@ -44,7 +44,7 @@ export default function RoutineEditorScreen() {
   const isNew = routineId == null;
   const insets = useSafeAreaInsets();
 
-  const [full, setFull] = useState<RoutineFull | null>(null);
+  const [, setFull] = useState<RoutineFull | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [name, setName] = useState('');
   const [color, setColor] = useState<string>(COLOR_CHOICES[8]!);
@@ -353,7 +353,7 @@ export default function RoutineEditorScreen() {
               <Text style={{ fontSize: 32, marginBottom: 8 }}>🛌</Text>
               <Text variant="bodyStrong">Día de descanso</Text>
               <Text variant="micro" tone="muted" style={{ marginTop: 4 }}>
-                Toca "Activar día" para añadir entrenamiento
+                Toca «Activar día» para añadir entrenamiento
               </Text>
             </View>
           ) : (

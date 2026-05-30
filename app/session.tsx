@@ -3,7 +3,7 @@
  * Registro en vivo: teclado calculator-style, persistencia en SQLite por serie,
  * separación estricta planeado vs realizado, soporte para saltar/sustituir/añadir.
  */
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -60,7 +60,7 @@ export default function SessionScreen() {
   const [buffer, setBuffer] = useState<string | null>(null);
   const [weights, setWeights] = useState<number[]>([]);
   const [reps, setReps] = useState<number[]>([]);
-  const [setIds, setSetIds] = useState<Array<number | null>>([]);
+  const [setIds, setSetIds] = useState<(number | null)[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   // Sheets
@@ -162,7 +162,7 @@ export default function SessionScreen() {
     const targetSetsCount = Math.max(current.targetSets, existingSets.length);
     const wArr: number[] = [];
     const rArr: number[] = [];
-    const idArr: Array<number | null> = [];
+    const idArr: (number | null)[] = [];
     for (let i = 0; i < targetSetsCount; i++) {
       const ex = existingSets[i];
       wArr.push(ex?.weight ?? current.targetWeight ?? 0);
@@ -294,7 +294,7 @@ export default function SessionScreen() {
     ok: boolean;
     error?: string;
     invalid?: boolean;
-    setIds: Array<number | null>;
+    setIds: (number | null)[];
   }> => {
     const { weight, reps: r } = resolveCurrent();
     // Refleja siempre lo tipeado en el estado local (no perderlo en pantalla).
