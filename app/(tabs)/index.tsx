@@ -12,7 +12,7 @@ import { Header } from '@/components/Header';
 import { Screen } from '@/components/Screen';
 import { StaggerItem } from '@/components/StaggerItem';
 import { Text } from '@/components/Text';
-import { listExercises } from '@/db/queries/exercises';
+import { listExercisesIncludingArchived } from '@/db/queries/exercises';
 import { createSession } from '@/db/queries/sessions';
 import type { Exercise } from '@/db/schema';
 import { getTodayState, mergeSessionBlocks, type MergedBlock, type TodayState } from '@/domain/today';
@@ -26,7 +26,7 @@ export default function TodayScreen() {
   const [startError, setStartError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [s, ex] = await Promise.all([getTodayState(), listExercises()]);
+    const [s, ex] = await Promise.all([getTodayState(), listExercisesIncludingArchived()]);
     setState(s);
     setCatalog(ex);
   }, []);

@@ -9,4 +9,6 @@ const sqlite = openDatabaseSync(DB_NAME, { enableChangeListener: true });
 
 export const db: ExpoSQLiteDatabase<typeof schema> = drizzle(sqlite, { schema });
 
-export { schema };
+// Handle nativo de expo-sqlite, para operaciones que Drizzle no expone
+// (p. ej. PRAGMA table_info en las migraciones aditivas del bootstrap).
+export { schema, sqlite };

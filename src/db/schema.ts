@@ -33,6 +33,10 @@ export const exercises = sqliteTable(
     muscleGroup: text('muscle_group'),
     equipment: text('equipment'),
     notes: text('notes'),
+    // Soft-delete: archivado != borrado. Un ejercicio archivado desaparece del
+    // catálogo y de los selectores, pero se conserva en rutinas e historial
+    // (FK onDelete: 'restrict' impide el borrado físico si está referenciado).
+    archivedAt: integer('archived_at', { mode: 'timestamp_ms' }),
     ...timestamps,
   },
   (t) => ({

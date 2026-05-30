@@ -22,7 +22,7 @@ import { confirm } from '@/components/confirm';
 import { NumericKeypad, type KeyValue } from '@/components/NumericKeypad';
 import { Text } from '@/components/Text';
 import { toast } from '@/components/Toast';
-import { listExercises } from '@/db/queries/exercises';
+import { listExercises, listExercisesIncludingArchived } from '@/db/queries/exercises';
 import {
   deleteSet,
   ensureSessionBlock,
@@ -49,7 +49,10 @@ export default function SessionScreen() {
   const [session, setSession] = useState<SessionFull | null>(null);
   const [plan, setPlan] = useState<TodayPlanBlock[]>([]);
   const [activeIdx, setActiveIdx] = useState(initialIdx);
-  const [exercises, setExercises] = useState<Exercise[]>([]);
+  // `catalog` incluye archivados (resuelve nombres en el merge); `pickable` solo
+  // activos (lo que se ofrece para sustituir/añadir).
+  const [catalog, setCatalog] = useState<Exercise[]>([]);
+  const [pickable, setPickable] = useState<Exercise[]>([]);
 
   // Input state
   const [field, setField] = useState<Field>('weight');
@@ -219,7 +222,7 @@ export default function SessionScreen() {
           title="Añadir ejercicio"
           tall
         >
-          <ExerciseList exercises={exercises} onPick={onPickAdd} />
+          <ExerciseList exercises={pickable} onPick={onPickAdd} />
         </BottomSheet>
       </SafeAreaView>
     );
@@ -615,7 +618,7 @@ export default function SessionScreen() {
         title="Sustituir ejercicio"
         tall
       >
-        <ExerciseList exercises={exercises} onPick={onPickReplace} />
+        <ExerciseList exercises={pickable} onPick={onPickReplace} />
       </BottomSheet>
 
       <BottomSheet
@@ -624,7 +627,7 @@ export default function SessionScreen() {
         title="Añadir ejercicio"
         tall
       >
-        <ExerciseList exercises={exercises} onPick={onPickAdd} />
+        <ExerciseList exercises={pickable} onPick={onPickAdd} />
       </BottomSheet>
     </SafeAreaView>
   );

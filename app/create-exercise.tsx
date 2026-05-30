@@ -1,5 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Keyboard,
   Pressable,
@@ -15,7 +15,8 @@ import { ExerciseIcon } from '@/components/ExerciseIcon';
 import { FieldError } from '@/components/FieldError';
 import { IconButton } from '@/components/IconButton';
 import { Text } from '@/components/Text';
-import { createExercise } from '@/db/queries/exercises';
+import { toast } from '@/components/Toast';
+import { createExercise, getExercise, updateExercise } from '@/db/queries/exercises';
 import {
   colors,
   COLOR_CHOICES,
@@ -28,15 +29,43 @@ import {
 import { goBackSafe } from '@/utils/navigation';
 
 export default function CreateExerciseScreen() {
-  const { initialName } = useLocalSearchParams<{ initialName?: string }>();
+  const { initialName, id } = useLocalSearchParams<{ initialName?: string; id?: string }>();
+  const editId = id != null ? Number(id) : null;
+  const isEdit = editId != null && Number.isFinite(editId);
   const insets = useSafeAreaInsets();
   const [name, setName] = useState<string>(initialName ?? '');
   const [icon, setIcon] = useState<string>('💪');
   const [color, setColor] = useState<string>(COLOR_CHOICES[8]!);
   const [muscle, setMuscle] = useState<string>(MUSCLE_GROUPS[0]!);
   const [equip, setEquip] = useState<string>(EQUIPMENT[0]!);
+  // Notas no se editan en este form; preservamos las existentes al actualizar.
+  const [notes, setNotes] = useState<string>('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+
+  // Modo edición: precargar el ejercicio existente.
+  useEffect(() => {
+    if (!isEdit) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const ex = await getExercise(editId);
+        if (cancelled || !ex) return;
+        setName(ex.name);
+        setIcon(ex.icon);
+        setColor(ex.color);
+        if (ex.muscleGroup) setMuscle(ex.muscleGroup);
+        if (ex.equipment) setEquip(ex.equipment);
+        setNotes(ex.notes ?? '');
+      } catch (e) {
+        console.warn('create-exercise load:', e);
+        setErrors({ _form: 'No se pudo cargar el ejercicio.' });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isEdit, editId]);
 
   // El botón guardar está SIEMPRE habilitado salvo mientras se persiste.
   // Si faltan datos, la validación zod los reporta en línea.
@@ -45,19 +74,23 @@ export default function CreateExerciseScreen() {
     Keyboard.dismiss();
     setSaving(true);
     setErrors({});
-    const result = await createExercise({
+    const input = {
       name: name.trim(),
       icon,
       color,
       muscleGroup: muscle,
       equipment: equip,
-      notes: '',
-    });
+      notes,
+    };
+    const result = isEdit
+      ? await updateExercise(editId, input)
+      : await createExercise(input);
     setSaving(false);
     if (!result.ok) {
       setErrors(result.errors);
       return;
     }
+    toast.success(isEdit ? 'Ejercicio actualizado' : 'Ejercicio creado');
     goBackSafe();
   };
 
@@ -68,7 +101,7 @@ export default function CreateExerciseScreen() {
         <IconButton onPress={() => goBackSafe()}>
           <CloseIcon size={18} color={colors.text} />
         </IconButton>
-        <Text variant="bodyStrong">Nuevo ejercicio</Text>
+        <Text variant="bodyStrong">{isEdit ? 'Editar ejercicio' : 'Nuevo ejercicio'}</Text>
         <Pressable
           onPress={onSave}
           disabled={saving}

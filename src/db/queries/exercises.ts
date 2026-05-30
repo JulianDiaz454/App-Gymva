@@ -1,11 +1,29 @@
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, isNull } from 'drizzle-orm';
 
 import { db } from '@/db/client';
 import { exercises, type Exercise, type NewExercise } from '@/db/schema';
 import { exerciseInputSchema, formatZodErrors, type ExerciseInput } from '@/validation/schemas';
 import { runMutation, type MutationResult } from './result';
 
+/**
+ * Catálogo activo: excluye los archivados (soft-delete). Es la lista que se
+ * muestra al usuario y la que alimenta los selectores de rutina/sesión.
+ */
 export async function listExercises(): Promise<Exercise[]> {
+  return db
+    .select()
+    .from(exercises)
+    .where(isNull(exercises.archivedAt))
+    .orderBy(asc(exercises.name));
+}
+
+/**
+ * TODOS los ejercicios, incluidos los archivados. Necesario para resolver el
+ * nombre/icono de un ejercicio que sigue referenciado en rutinas o historial
+ * (el merge de Hoy/Sesión y las pantallas de progreso) aunque ya no esté en el
+ * catálogo activo.
+ */
+export async function listExercisesIncludingArchived(): Promise<Exercise[]> {
   return db.select().from(exercises).orderBy(asc(exercises.name));
 }
 
@@ -75,6 +93,23 @@ export async function updateExercise(
     }
     return { ok: false, errors: { _form: msg } };
   }
+}
+
+/**
+ * Archiva (soft-delete) un ejercicio: lo saca del catálogo activo pero conserva
+ * sus referencias en rutinas e historial. No usamos delete físico porque las FK
+ * (routine_exercises / session_exercises) son onDelete: 'restrict'.
+ */
+export async function archiveExercise(id: number): Promise<MutationResult> {
+  return runMutation(() =>
+    db.update(exercises).set({ archivedAt: new Date(), updatedAt: new Date() }).where(eq(exercises.id, id)),
+  );
+}
+
+export async function unarchiveExercise(id: number): Promise<MutationResult> {
+  return runMutation(() =>
+    db.update(exercises).set({ archivedAt: null, updatedAt: new Date() }).where(eq(exercises.id, id)),
+  );
 }
 
 export async function deleteExercise(id: number): Promise<MutationResult> {

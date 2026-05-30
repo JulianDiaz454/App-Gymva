@@ -9,7 +9,7 @@
  * v2 con cambios destructivos, se introducirá un sistema de versionado explícito.
  */
 
-import { db } from './client';
+import { db, sqlite } from './client';
 import { sql } from 'drizzle-orm';
 
 const STATEMENTS: string[] = [
@@ -21,6 +21,7 @@ const STATEMENTS: string[] = [
     muscle_group TEXT,
     equipment TEXT,
     notes TEXT,
+    archived_at INTEGER,
     created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
     updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
   );`,
@@ -119,6 +120,18 @@ const STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS progress_photos_date_idx ON progress_photos (date);`,
 ];
 
+/**
+ * Migraciones aditivas idempotentes para BDs ya existentes.
+ * `CREATE TABLE IF NOT EXISTS` no agrega columnas a tablas que ya existen, y
+ * SQLite no soporta `ADD COLUMN IF NOT EXISTS`; por eso comprobamos el esquema
+ * con PRAGMA table_info antes de cada ALTER.
+ */
+async function ensureColumn(table: string, column: string, definition: string): Promise<void> {
+  const cols = (await sqlite.getAllAsync(`PRAGMA table_info(${table})`)) as Array<{ name: string }>;
+  if (cols.some((c) => c.name === column)) return;
+  await db.run(sql.raw(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition};`));
+}
+
 let initialized = false;
 
 export async function initDatabase(): Promise<void> {
@@ -127,5 +140,7 @@ export async function initDatabase(): Promise<void> {
   for (const stmt of STATEMENTS) {
     await db.run(sql.raw(stmt));
   }
+  // Migraciones aditivas para instalaciones previas (sin estas columnas).
+  await ensureColumn('exercises', 'archived_at', 'INTEGER');
   initialized = true;
 }

@@ -2,20 +2,24 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { ChevronIcon, TrendIcon } from '@/components/AppIcons';
+import { ChevronIcon, EditIcon, TrashIcon, TrendIcon } from '@/components/AppIcons';
 import { BackBar } from '@/components/BackBar';
 import { Card } from '@/components/Card';
+import { confirm } from '@/components/confirm';
 import { EmptyState } from '@/components/EmptyState';
 import { ExerciseIcon } from '@/components/ExerciseIcon';
+import { IconButton } from '@/components/IconButton';
 import { LineChart } from '@/components/LineChart';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
-import { getExercise } from '@/db/queries/exercises';
+import { toast } from '@/components/Toast';
+import { archiveExercise, getExercise } from '@/db/queries/exercises';
 import { getExerciseHistory, type ExerciseSessionPoint } from '@/db/queries/progress';
 import type { Exercise } from '@/db/schema';
 import { colors, radii, space } from '@/theme/tokens';
 import { formatLongDate, formatShortDate } from '@/utils/date';
 import { formatNumber } from '@/utils/format';
+import { goBackSafe } from '@/utils/navigation';
 
 type Metric = 'top' | 'volume';
 
@@ -82,6 +86,42 @@ export default function ExerciseDetailScreen() {
   // history.reverse() crea un array nuevo en cada render — memoizamos.
   const historyReversed = useMemo(() => history.slice().reverse(), [history]);
 
+  const onEdit = () => {
+    if (!ex) return;
+    router.push({ pathname: '/create-exercise', params: { id: String(ex.id) } });
+  };
+
+  const onArchive = async () => {
+    if (!ex) return;
+    const ok = await confirm({
+      title: '¿Archivar ejercicio?',
+      message:
+        'Desaparecerá del catálogo y de los selectores, pero se conserva en tus rutinas e historial. Podrás reactivarlo más adelante.',
+      confirmLabel: 'Archivar',
+      destructive: true,
+    });
+    if (!ok) return;
+    const result = await archiveExercise(ex.id);
+    if (!result.ok) {
+      toast.error(result.errors._form ?? 'No se pudo archivar');
+      return;
+    }
+    toast.info('Ejercicio archivado');
+    goBackSafe();
+  };
+
+  // Acciones de edición/archivo para la BackBar (solo cuando hay ejercicio).
+  const actions = ex ? (
+    <View style={{ flexDirection: 'row', gap: 6 }}>
+      <IconButton size={40} onPress={onEdit} accessibilityLabel="Editar ejercicio">
+        <EditIcon size={17} color={colors.text} />
+      </IconButton>
+      <IconButton size={40} onPress={onArchive} accessibilityLabel="Archivar ejercicio">
+        <TrashIcon size={17} color={colors.text} />
+      </IconButton>
+    </View>
+  ) : undefined;
+
   if (loadError) {
     return (
       <Screen withTabBar={false}>
@@ -102,7 +142,7 @@ export default function ExerciseDetailScreen() {
   if (history.length === 0) {
     return (
       <Screen withTabBar={false}>
-        <BackBar />
+        <BackBar right={actions} />
         <View style={styles.hero}>
           <ExerciseIcon icon={ex.icon} color={ex.color} size="lg" />
           <View style={{ flex: 1 }}>
@@ -127,13 +167,7 @@ export default function ExerciseDetailScreen() {
 
   return (
     <Screen withTabBar={false}>
-      <BackBar
-        right={
-          <Text variant="caption" style={{ fontWeight: '600', minWidth: 100, textAlign: 'right' }}>
-            Levantamiento
-          </Text>
-        }
-      />
+      <BackBar right={actions} />
 
       {/* Hero */}
       <View style={styles.hero}>
