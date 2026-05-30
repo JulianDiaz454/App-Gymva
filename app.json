@@ -23,7 +23,11 @@
         "backgroundImage": "./assets/adaptive-icon-bg.png",
         "backgroundColor": "#0A0A0B"
       },
-      "package": "com.gvm.app"
+      "package": "com.gvm.app",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -38,6 +42,18 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b64468ea-dfa3-46d9-ab68-b507d1d3da8f"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/b64468ea-dfa3-46d9-ab68-b507d1d3da8f"
     }
   }
 }
