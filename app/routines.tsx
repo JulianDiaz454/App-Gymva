@@ -49,7 +49,7 @@ export default function RoutinesListScreen() {
         title="Rutinas"
         style={{ paddingTop: 8 }}
         right={
-          <IconButton variant="primary" size={44} onPress={() => router.push('/routine-editor')}>
+          <IconButton variant="primary" size={44} onPress={startCreate}>
             <PlusIcon size={20} color={colors.bg} />
           </IconButton>
         }

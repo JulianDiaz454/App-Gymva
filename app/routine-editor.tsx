@@ -9,6 +9,7 @@ import { ExerciseIcon } from '@/components/ExerciseIcon';
 import { FieldError } from '@/components/FieldError';
 import { IconButton } from '@/components/IconButton';
 import { Text } from '@/components/Text';
+import { toast } from '@/components/Toast';
 import { listExercises } from '@/db/queries/exercises';
 import {
   getRoutineFull,
