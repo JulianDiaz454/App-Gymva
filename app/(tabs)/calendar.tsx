@@ -20,7 +20,7 @@ import {
 } from '@/db/queries/routines';
 import type { Routine } from '@/db/schema';
 import { getSessionForDate, type SessionFull } from '@/db/queries/sessions';
-import { listExercises } from '@/db/queries/exercises';
+import { listExercisesIncludingArchived } from '@/db/queries/exercises';
 import type { Exercise } from '@/db/schema';
 import { colors, radii, space } from '@/theme/tokens';
 import { DOW_LONG_ES, isoDayOfWeek, MONTHS_FULL_ES, toIsoDate, weekStartIso } from '@/utils/date';
