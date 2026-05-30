@@ -46,7 +46,9 @@ export default function CalendarTab() {
       listRoutines(),
       listWeekAssignments(),
       listSessionsInMonth(year, month),
-      listExercises(),
+      // Incluye archivados: el calendario muestra sesiones históricas que pueden
+      // referenciar ejercicios ya archivados; sin esto su nombre/icono se rompe.
+      listExercisesIncludingArchived(),
     ]);
     setRoutines(rs);
     setSessions(ses);
