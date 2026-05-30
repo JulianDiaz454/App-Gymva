@@ -9,17 +9,26 @@ interface Props {
   label: string;
   leftIcon?: ReactNode;
   style?: StyleProp<ViewStyle>;
-  tone?: 'default' | 'ok' | 'bad';
+  tone?: 'default' | 'ok' | 'bad' | 'warn';
 }
 
 export function Chip({ label, leftIcon, style, tone = 'default' }: Props) {
   const bg =
     tone === 'ok'
-      ? 'rgba(74,222,128,0.16)'
+      ? colors.okSubtle
       : tone === 'bad'
-      ? 'rgba(248,113,113,0.16)'
+      ? colors.badSubtle
+      : tone === 'warn'
+      ? colors.warnSubtle
       : colors.raised;
-  const fg = tone === 'ok' ? colors.ok : tone === 'bad' ? colors.bad : colors.textSec;
+  const fg =
+    tone === 'ok'
+      ? colors.ok
+      : tone === 'bad'
+      ? colors.bad
+      : tone === 'warn'
+      ? colors.warn
+      : colors.textSec;
   return (
     <View
       style={[

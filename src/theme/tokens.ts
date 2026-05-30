@@ -28,6 +28,11 @@ export const colors = {
   warn: '#FBBF24',
   bad: '#F87171',
 
+  // Estado — fondos suaves (chips, badges, banners)
+  okSubtle: 'rgba(74,222,128,0.16)',
+  warnSubtle: 'rgba(251,191,36,0.16)',
+  badSubtle: 'rgba(248,113,113,0.16)',
+
   // Overlay
   overlay: 'rgba(0,0,0,0.5)',
   overlayDeep: 'rgba(0,0,0,0.6)',

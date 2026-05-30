@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ActivityIndicator, View } from 'react-native';
 
 import { Text } from '@/components/Text';
+import { ToastHost } from '@/components/Toast';
 import { useDatabaseInit } from '@/hooks/useDatabase';
 import { colors } from '@/theme/tokens';
 
@@ -76,6 +77,7 @@ export default function RootLayout() {
           <Stack.Screen name="photos" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="exercise/[id]" options={{ animation: 'slide_from_right' }} />
         </Stack>
+        <ToastHost />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
