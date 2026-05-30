@@ -73,7 +73,12 @@ export default function SessionScreen() {
       setSession(s);
       const today = await getTodayState();
       setPlan(today.planned);
-      setExercises(await listExercises());
+      const [all, active] = await Promise.all([
+        listExercisesIncludingArchived(),
+        listExercises(),
+      ]);
+      setCatalog(all);
+      setPickable(active);
     } catch (e) {
       console.warn('session load:', e);
       setError('No se pudo cargar la sesión. Reintenta o vuelve atrás.');
@@ -86,8 +91,8 @@ export default function SessionScreen() {
 
   // Construye bloques UI fusionando plan + sesión (fuente única en el dominio).
   const blocks = useMemo<MergedBlock[]>(
-    () => mergeSessionBlocks(plan, session, exercises),
-    [session, plan, exercises],
+    () => mergeSessionBlocks(plan, session, catalog),
+    [session, plan, catalog],
   );
 
   const current = blocks[activeIdx];

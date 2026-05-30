@@ -38,8 +38,9 @@ interface DayState {
 }
 
 export default function RoutineEditorScreen() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, copyFrom } = useLocalSearchParams<{ id?: string; copyFrom?: string }>();
   const routineId = id ? Number(id) : null;
+  const copyFromId = copyFrom ? Number(copyFrom) : null;
   const isNew = routineId == null;
   const insets = useSafeAreaInsets();
 
@@ -51,36 +52,41 @@ export default function RoutineEditorScreen() {
   const [days, setDays] = useState<DayState[]>(() => Array.from({ length: 7 }, () => ({ routineDayId: null, label: null, exercises: [] })));
   const [activeDay, setActiveDay] = useState(0);
   const [picker, setPicker] = useState(false);
+  const [copyDaySheet, setCopyDaySheet] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     setExercises(await listExercises());
-    if (routineId) {
-      const f = await getRoutineFull(routineId);
-      if (f) {
-        setFull(f);
-        setName(f.name);
-        setColor(f.color);
-        const nextDays: DayState[] = Array.from({ length: 7 }, () => ({ routineDayId: null, label: null, exercises: [] }));
-        for (const d of f.days) {
-          nextDays[d.dayOfWeek] = {
-            routineDayId: d.id,
-            label: d.label,
-            exercises: d.exercises.map((e) => ({
-              id: e.id,
-              exerciseId: e.exerciseId,
-              targetSets: e.targetSets,
-              targetReps: e.targetReps,
-              targetWeight: e.targetWeight,
-              order: e.order,
-            })),
-          };
-        }
-        setDays(nextDays);
+    // editId → editar (conserva ids); copyFromId → clonar (todo nuevo).
+    const sourceId = routineId ?? copyFromId;
+    if (sourceId == null) return;
+    const cloning = routineId == null && copyFromId != null;
+    const f = await getRoutineFull(sourceId);
+    if (f) {
+      setFull(cloning ? null : f);
+      setName(cloning ? `${f.name} (copia)` : f.name);
+      setColor(f.color);
+      const nextDays: DayState[] = Array.from({ length: 7 }, () => ({ routineDayId: null, label: null, exercises: [] }));
+      for (const d of f.days) {
+        nextDays[d.dayOfWeek] = {
+          // Al clonar, routineDayId/id = null para insertar todo nuevo sin
+          // tocar la rutina origen.
+          routineDayId: cloning ? null : d.id,
+          label: d.label,
+          exercises: d.exercises.map((e) => ({
+            id: cloning ? null : e.id,
+            exerciseId: e.exerciseId,
+            targetSets: e.targetSets,
+            targetReps: e.targetReps,
+            targetWeight: e.targetWeight,
+            order: e.order,
+          })),
+        };
       }
+      setDays(nextDays);
     }
-  }, [routineId]);
+  }, [routineId, copyFromId]);
 
   useEffect(() => {
     load();
@@ -148,6 +154,25 @@ export default function RoutineEditorScreen() {
     );
   };
 
+  // F4 — copia label + ejercicios del día activo a otro día. Conserva el
+  // routineDayId del destino para que saveRoutineFull actualice y no duplique.
+  const copyDayTo = (targetIdx: number) => {
+    setCopyDaySheet(false);
+    setDays((prev) =>
+      prev.map((d, i) =>
+        i === targetIdx
+          ? {
+              ...d,
+              label: day.label,
+              exercises: day.exercises.map((e) => ({ ...e, id: null })),
+            }
+          : d,
+      ),
+    );
+    setActiveDay(targetIdx);
+    toast.success('Día copiado');
+  };
+
   const save = async () => {
     if (saving) return;
     setErrors({});
@@ -182,6 +207,7 @@ export default function RoutineEditorScreen() {
       setErrors(result.errors);
       return;
     }
+    toast.success(routineId ? 'Rutina actualizada' : 'Rutina guardada');
     goBackSafe();
   };
 
@@ -392,6 +418,13 @@ export default function RoutineEditorScreen() {
                     Añadir ejercicio
                   </Text>
                 </Pressable>
+                {day.exercises.length > 0 ? (
+                  <Pressable onPress={() => setCopyDaySheet(true)} style={styles.copyDayBtn}>
+                    <Text variant="caption" tone="secondary" style={{ fontWeight: '600' }}>
+                      Copiar este día a otro
+                    </Text>
+                  </Pressable>
+                ) : null}
               </View>
             </>
           )}
@@ -402,6 +435,30 @@ export default function RoutineEditorScreen() {
           ) : null}
         </View>
       </ScrollView>
+
+      {/* Copiar día a otro */}
+      <BottomSheet
+        visible={copyDaySheet}
+        onClose={() => setCopyDaySheet(false)}
+        title="Copiar día a…"
+        eyebrow={`Desde ${DAY_NAMES[activeDay]}`}
+      >
+        <View style={{ gap: 8, paddingBottom: 8 }}>
+          {DAY_NAMES.map((dn, i) => {
+            if (i === activeDay) return null;
+            const target = days[i]!;
+            const willOverwrite = target.label != null && target.exercises.length > 0;
+            return (
+              <Pressable key={i} onPress={() => copyDayTo(i)} style={styles.copyDayRow}>
+                <Text variant="bodyStrong">{dn}</Text>
+                <Text variant="micro" tone="muted">
+                  {willOverwrite ? 'Reemplazará lo existente' : 'Vacío'}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </BottomSheet>
 
       <BottomSheet visible={picker} onClose={() => setPicker(false)} title="Elegir ejercicio" tall contentPadding={0}>
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: space.xl, paddingBottom: 24 }}>
@@ -583,6 +640,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexDirection: 'row',
     gap: 6,
+  },
+  copyDayBtn: {
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  copyDayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    borderRadius: radii.sm,
+    paddingHorizontal: 16,
+    height: 52,
   },
   numField: {
     flex: 1,
