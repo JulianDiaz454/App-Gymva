@@ -12,19 +12,23 @@ import { Header } from '@/components/Header';
 import { Screen } from '@/components/Screen';
 import { StaggerItem } from '@/components/StaggerItem';
 import { Text } from '@/components/Text';
+import { listExercises } from '@/db/queries/exercises';
 import { createSession } from '@/db/queries/sessions';
-import { getTodayState, type TodayState, type TodayPlanBlock } from '@/domain/today';
+import type { Exercise } from '@/db/schema';
+import { getTodayState, mergeSessionBlocks, type MergedBlock, type TodayState } from '@/domain/today';
 import { colors, radii, space } from '@/theme/tokens';
 import { formatLongDate } from '@/utils/date';
 import { formatNumber } from '@/utils/format';
 
 export default function TodayScreen() {
   const [state, setState] = useState<TodayState | null>(null);
+  const [catalog, setCatalog] = useState<Exercise[]>([]);
   const [startError, setStartError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const s = await getTodayState();
+    const [s, ex] = await Promise.all([getTodayState(), listExercises()]);
     setState(s);
+    setCatalog(ex);
   }, []);
 
   useFocusEffect(
@@ -33,35 +37,18 @@ export default function TodayScreen() {
     }, [load]),
   );
 
-  const blocks = useMemo<TodayPlanBlock[]>(() => state?.planned ?? [], [state]);
-  const sessionBlocks = state?.session?.blocks ?? [];
+  // Fuente única de merge plan↔sesión (igual que la pantalla de Sesión): así un
+  // ejercicio sustituido se refleja en su lugar y no aparecen ejercicios "extra".
+  const blocks = useMemo<MergedBlock[]>(
+    () => (state ? mergeSessionBlocks(state.planned, state.session, catalog) : []),
+    [state, catalog],
+  );
 
-  // Mapeo planeado -> sets registrados por exerciseId
-  const completedByExercise = useMemo(() => {
-    const m = new Map<number, { setsCount: number; topWeight: number }>();
-    for (const b of sessionBlocks) {
-      if (b.skipped) continue;
-      if (b.sets.length === 0) continue;
-      const top = Math.max(...b.sets.map((s) => s.weight));
-      m.set(b.exerciseId, { setsCount: b.sets.length, topWeight: top });
-    }
-    return m;
-  }, [sessionBlocks]);
-
-  const skippedByExercise = useMemo(() => {
-    const m = new Set<number>();
-    for (const b of sessionBlocks) {
-      if (b.skipped) m.add(b.exerciseId);
-    }
-    return m;
-  }, [sessionBlocks]);
-
-  // Una serie cuenta como atendida si está completada o si fue saltada
-  // (saltada = decisión explícita del usuario de no hacerla hoy).
+  // Atendido = completado o saltado (decisión explícita de no hacerlo hoy).
   const attended = blocks.filter(
-    (b) => completedByExercise.has(b.exerciseId) || skippedByExercise.has(b.exerciseId),
+    (b) => b.status === 'completed' || b.status === 'skipped',
   ).length;
-  const done = blocks.filter((b) => completedByExercise.has(b.exerciseId)).length;
+  const done = blocks.filter((b) => b.status === 'completed').length;
   const total = blocks.length;
   const allDone = total > 0 && attended === total;
 
@@ -156,7 +143,9 @@ export default function TodayScreen() {
           label={allDone ? 'Ver resumen' : done > 0 ? 'Continuar entrenamiento' : 'Iniciar entrenamiento'}
           fullWidth
           onPress={() => {
-            const idx = blocks.findIndex((b) => !completedByExercise.has(b.exerciseId));
+            const idx = blocks.findIndex(
+              (b) => b.status !== 'completed' && b.status !== 'skipped',
+            );
             startSession(idx === -1 ? 0 : idx);
           }}
           rightIcon={<ChevronIcon size={14} color={colors.bg} dir="right" />}
@@ -172,15 +161,19 @@ export default function TodayScreen() {
       <View style={{ paddingHorizontal: space.xl, gap: 10 }}>
         <Text variant="section" tone="muted" style={{ marginBottom: 4 }}>Ejercicios</Text>
         {blocks.map((b, idx) => {
-          const completed = completedByExercise.get(b.exerciseId);
-          const isSkipped = skippedByExercise.has(b.exerciseId);
-          const detail = completed
-            ? `${formatNumber(completed.setsCount)} series · ${formatNumber(completed.topWeight)} kg`
+          const isCompleted = b.status === 'completed';
+          const isInProcess = b.status === 'in_process';
+          const isSkipped = b.status === 'skipped';
+          const topWeight = b.sets.length ? Math.max(...b.sets.map((s) => s.weight)) : 0;
+          const detail = isCompleted
+            ? `${formatNumber(b.sets.length)} series · ${formatNumber(topWeight)} kg`
+            : isInProcess
+            ? `${formatNumber(b.sets.length)} de ${formatNumber(b.targetSets)} series`
             : `${formatNumber(b.targetSets)} × ${formatNumber(b.targetReps)}${
                 b.targetWeight ? ` · ${formatNumber(b.targetWeight)} kg` : ''
               }`;
           return (
-            <StaggerItem key={b.routineExerciseId} index={idx}>
+            <StaggerItem key={b.slot} index={idx}>
             <Pressable
               onPress={() => startSession(idx)}
               style={[
@@ -188,7 +181,7 @@ export default function TodayScreen() {
                 { opacity: isSkipped ? 0.5 : 1 },
               ]}
             >
-              <ExerciseIcon icon={b.icon} color={b.color} size="md" dim={!!completed} />
+              <ExerciseIcon icon={b.icon} color={b.color} size="md" dim={isCompleted} />
               <View style={{ flex: 1 }}>
                 <Text
                   variant="bodyStrong"
@@ -202,16 +195,18 @@ export default function TodayScreen() {
                 </Text>
                 <Text
                   variant="caption"
-                  tone={completed ? 'muted' : 'secondary'}
+                  tone={isCompleted ? 'muted' : 'secondary'}
                   tabular
                 >
                   {detail}
                 </Text>
               </View>
-              {completed ? (
+              {isCompleted ? (
                 <View style={styles.doneBadge}>
                   <CheckIcon size={15} color={colors.ok} />
                 </View>
+              ) : isInProcess ? (
+                <Chip label="En proceso" tone="warn" />
               ) : isSkipped ? (
                 <Chip label="Saltado" />
               ) : (
@@ -262,7 +257,7 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: radii.pill,
-    backgroundColor: 'rgba(74,222,128,0.16)',
+    backgroundColor: colors.okSubtle,
     alignItems: 'center',
     justifyContent: 'center',
   },

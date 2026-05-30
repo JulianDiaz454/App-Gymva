@@ -18,8 +18,10 @@ import {
 import { BottomSheet } from '@/components/BottomSheet';
 import { ExerciseIcon } from '@/components/ExerciseIcon';
 import { IconButton } from '@/components/IconButton';
+import { confirm } from '@/components/confirm';
 import { NumericKeypad, type KeyValue } from '@/components/NumericKeypad';
 import { Text } from '@/components/Text';
+import { toast } from '@/components/Toast';
 import { listExercises } from '@/db/queries/exercises';
 import {
   deleteSet,
@@ -31,32 +33,13 @@ import {
   updateSet,
   type SessionFull,
 } from '@/db/queries/sessions';
-import type { Exercise, SetRow } from '@/db/schema';
-import { getTodayState, type TodayPlanBlock } from '@/domain/today';
+import type { Exercise } from '@/db/schema';
+import { getTodayState, mergeSessionBlocks, type MergedBlock, type TodayPlanBlock } from '@/domain/today';
 import { colors, radii, space } from '@/theme/tokens';
 import { displayInputBuffer, formatNumber, parseDecimalInput } from '@/utils/format';
 import { goBackSafe } from '@/utils/navigation';
 
 type Field = 'weight' | 'reps';
-
-interface UIBlock {
-  // origen
-  exerciseId: number;
-  routineExerciseId: number | null;
-  // del catálogo
-  name: string;
-  icon: string;
-  color: string;
-  muscleGroup: string | null;
-  // plan
-  targetSets: number;
-  targetReps: number;
-  targetWeight: number | null;
-  // session block (si existe)
-  sessionExerciseId: number | null;
-  skipped: boolean;
-  sets: SetRow[];
-}
 
 export default function SessionScreen() {
   const params = useLocalSearchParams<{ sessionId?: string; startIdx?: string }>();
@@ -98,53 +81,11 @@ export default function SessionScreen() {
     load();
   }, [load]);
 
-  // Construye bloques UI fusionando plan + sesión
-  const blocks = useMemo<UIBlock[]>(() => {
-    if (!session) return [];
-    const planByEx = new Map(plan.map((p) => [p.exerciseId, p]));
-    const sessionByEx = new Map(session.blocks.map((b) => [b.exerciseId, b]));
-
-    const all: UIBlock[] = [];
-    // Plan items
-    for (const p of plan) {
-      const sb = sessionByEx.get(p.exerciseId);
-      all.push({
-        exerciseId: p.exerciseId,
-        routineExerciseId: p.routineExerciseId,
-        name: p.name,
-        icon: p.icon,
-        color: p.color,
-        muscleGroup: p.muscleGroup,
-        targetSets: p.targetSets,
-        targetReps: p.targetReps,
-        targetWeight: p.targetWeight,
-        sessionExerciseId: sb?.id ?? null,
-        skipped: sb?.skipped ?? false,
-        sets: sb?.sets ?? [],
-      });
-    }
-    // Improvisados (en sesión pero no en plan)
-    for (const sb of session.blocks) {
-      if (planByEx.has(sb.exerciseId)) continue;
-      const ex = exercises.find((e) => e.id === sb.exerciseId);
-      if (!ex) continue;
-      all.push({
-        exerciseId: sb.exerciseId,
-        routineExerciseId: null,
-        name: ex.name,
-        icon: ex.icon,
-        color: ex.color,
-        muscleGroup: ex.muscleGroup,
-        targetSets: Math.max(3, sb.sets.length || 3),
-        targetReps: 10,
-        targetWeight: null,
-        sessionExerciseId: sb.id,
-        skipped: sb.skipped,
-        sets: sb.sets,
-      });
-    }
-    return all;
-  }, [session, plan, exercises]);
+  // Construye bloques UI fusionando plan + sesión (fuente única en el dominio).
+  const blocks = useMemo<MergedBlock[]>(
+    () => mergeSessionBlocks(plan, session, exercises),
+    [session, plan, exercises],
+  );
 
   const current = blocks[activeIdx];
 
@@ -176,6 +117,7 @@ export default function SessionScreen() {
       if (blockId == null) return;
       await replaceSessionExercise(blockId, exId);
       await load();
+      toast.success('Ejercicio sustituido');
     } catch (e) {
       console.warn('onPickReplace:', e);
       setError('No se pudo sustituir el ejercicio.');
@@ -199,15 +141,13 @@ export default function SessionScreen() {
     }
   };
 
-  // Inicializa buffers cuando cambia el bloque activo.
-  // Deps deliberadas: `activeIdx` + identidad del bloque + cantidad de sets.
-  // NO usar `[activeIdx, current]` directamente: `current` se re-crea cada
-  // `load()`, y eso pisaba el input pendiente del usuario en mitad de un
-  // tipeo. Con estas deps el efecto solo corre cuando cambia el ejercicio
-  // o se añaden/quitan sets persistidos, no en cada refresh de DB.
-  const currentSessionExerciseId = current?.sessionExerciseId ?? null;
+  // Inicializa los buffers SOLO cuando cambia el ejercicio activo (entrar a un
+  // bloque o sustituirlo). Deliberadamente NO depende de la cantidad de sets ni
+  // del sessionExerciseId: una vez dentro del ejercicio, los arrays locales son
+  // la fuente de verdad de lo que se está editando y se sincronizan a DB en cada
+  // guardado. Si el efecto se re-disparara en cada `load()`, pisaría lo tipeado
+  // por el usuario (causa del bug "a veces no se guarda").
   const currentExerciseId = current?.exerciseId ?? null;
-  const currentSetsLen = current?.sets.length ?? 0;
   useEffect(() => {
     if (!current) return;
     const existingSets = current.sets;
@@ -230,7 +170,7 @@ export default function SessionScreen() {
     setBuffer(null);
     setError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeIdx, currentExerciseId, currentSessionExerciseId, currentSetsLen]);
+  }, [activeIdx, currentExerciseId]);
 
   if (!Number.isFinite(sessionId) || !session) {
     return (
@@ -325,8 +265,7 @@ export default function SessionScreen() {
     setError(null);
   };
 
-  const saveSet = async () => {
-    // Commit el buffer al estado primero
+  const resolveCurrent = (): { weight: number; reps: number } => {
     let weight = weights[activeSet] ?? 0;
     let r = reps[activeSet] ?? 0;
     if (buffer != null) {
@@ -336,50 +275,71 @@ export default function SessionScreen() {
         else r = Math.round(parsed);
       }
     }
+    return { weight, reps: r };
+  };
 
-    const blockId = await ensureBlock();
-    if (blockId == null) {
-      setError('No se pudo crear el bloque');
-      return;
-    }
+  // Persiste la serie activa en DB. Se invoca al pulsar Guardar y también al
+  // navegar (cambiar de serie/ejercicio o salir): así lo tipeado nunca se pierde
+  // por no haber pulsado Guardar (causa del bug "a veces no se guarda").
+  // Devuelve los setIds actualizados para que el llamador decida cómo avanzar.
+  const persistActiveSet = async (): Promise<{
+    ok: boolean;
+    error?: string;
+    invalid?: boolean;
+    setIds: Array<number | null>;
+  }> => {
+    const { weight, reps: r } = resolveCurrent();
+    // Refleja siempre lo tipeado en el estado local (no perderlo en pantalla).
+    setWeights((prev) => prev.map((v, i) => (i === activeSet ? weight : v)));
+    setReps((prev) => prev.map((v, i) => (i === activeSet ? r : v)));
+    setBuffer(null);
 
     const existingId = setIds[activeSet];
-    let result;
-    if (existingId != null) {
-      result = await updateSet(existingId, { weight, reps: r });
-    } else {
-      result = await logSet({
-        sessionExerciseId: blockId,
-        setNumber: activeSet + 1,
-        weight,
-        reps: r,
-      });
-    }
+    // Sin reps válidas y sin fila previa: no hay nada que persistir aún.
+    if (existingId == null && r < 1) return { ok: false, invalid: true, setIds };
+
+    const blockId = await ensureBlock();
+    if (blockId == null) return { ok: false, error: 'No se pudo crear el bloque', setIds };
+
+    const result =
+      existingId != null
+        ? await updateSet(existingId, { weight, reps: r })
+        : await logSet({ sessionExerciseId: blockId, setNumber: activeSet + 1, weight, reps: r });
 
     if (!result.ok) {
       const firstKey = Object.keys(result.errors)[0];
-      setError((firstKey && result.errors[firstKey]) ?? 'Error al guardar');
+      return {
+        ok: false,
+        error: (firstKey && result.errors[firstKey]) ?? 'Error al guardar',
+        setIds,
+      };
+    }
+
+    const updatedIds =
+      existingId != null ? setIds : setIds.map((v, i) => (i === activeSet ? result.set.id : v));
+    if (existingId == null) setSetIds(updatedIds);
+    await load();
+    return { ok: true, setIds: updatedIds };
+  };
+
+  const saveSet = async () => {
+    const res = await persistActiveSet();
+    if (!res.ok) {
+      setError(res.error ?? 'Ingresa al menos las repeticiones');
       return;
     }
     setError(null);
-    setBuffer(null);
 
-    // Refresca y avanza
-    await load();
-    const nextSetIdx = activeSet + 1;
-    if (nextSetIdx < weights.length) {
-      setActiveSet(nextSetIdx);
+    // M9: si quedan series por registrar en este ejercicio, avanza a la
+    // siguiente; si quedó completo, vuelve a "Hoy".
+    const nextEmpty = res.setIds.findIndex((id) => id == null);
+    if (nextEmpty >= 0) {
+      setActiveSet(nextEmpty);
       setField('weight');
+      toast.success('Serie guardada');
     } else {
-      // Bloque completo; pasa al siguiente bloque no completado
-      const nextBlock = blocks.findIndex(
-        (b, i) => i > activeIdx && !b.skipped && b.sets.length < b.targetSets,
-      );
-      if (nextBlock >= 0) {
-        setActiveIdx(nextBlock);
-      } else {
-        goBackSafe();
-      }
+      toast.success('Ejercicio completado');
+      goBackSafe();
     }
   };
 
@@ -397,6 +357,13 @@ export default function SessionScreen() {
     // Persistencia primero: si falla, NO actualizamos el estado local —
     // evita la serie "fantasma" que reaparece al próximo load().
     if (id != null) {
+      const ok = await confirm({
+        title: '¿Eliminar serie?',
+        message: 'Se borrarán el peso y las repeticiones registradas de esta serie.',
+        confirmLabel: 'Eliminar',
+        destructive: true,
+      });
+      if (!ok) return;
       try {
         await deleteSet(id);
       } catch (e) {
@@ -409,7 +376,10 @@ export default function SessionScreen() {
     setReps((prev) => prev.filter((_, i) => i !== idx));
     setSetIds((prev) => prev.filter((_, i) => i !== idx));
     if (activeSet >= idx && activeSet > 0) setActiveSet(activeSet - 1);
-    if (id != null) await load();
+    if (id != null) {
+      await load();
+      toast.info('Serie eliminada');
+    }
   };
 
   const onSkip = async () => {
@@ -424,16 +394,22 @@ export default function SessionScreen() {
       setError('No se pudo saltar el ejercicio.');
       return;
     }
-    const nextBlock = blocks.findIndex((b, i) => i > activeIdx && !b.skipped && b.sets.length === 0);
-    if (nextBlock >= 0) setActiveIdx(nextBlock);
-    else goBackSafe();
+    // M9: tras atender el ejercicio (saltarlo), vuelve a "Hoy".
+    toast.info('Ejercicio saltado');
+    goBackSafe();
+  };
+
+  // Guarda lo que esté en edición antes de cerrar para no perder la serie.
+  const onClose = async () => {
+    await persistActiveSet();
+    goBackSafe();
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* Top bar */}
       <View style={styles.topBar}>
-        <IconButton onPress={goBackSafe}>
+        <IconButton onPress={onClose}>
           <CloseIcon size={18} color={colors.text} />
         </IconButton>
         <View style={{ flex: 1, alignItems: 'center' }}>
@@ -451,10 +427,10 @@ export default function SessionScreen() {
       {/* Progress dots */}
       <View style={styles.dotsRow}>
         {blocks.map((b, i) => {
-          const completed = !b.skipped && b.sets.length >= b.targetSets;
+          const completed = b.status === 'completed';
           return (
             <View
-              key={b.exerciseId}
+              key={b.slot}
               style={[
                 styles.dot,
                 {
@@ -503,8 +479,11 @@ export default function SessionScreen() {
           const isActive = i === activeSet;
           return (
             <Pressable
-              key={i}
-              onPress={() => {
+              key={setIds[i] != null ? `set-${setIds[i]}` : `new-${i}`}
+              onPress={async () => {
+                if (i === activeSet) return;
+                // Persiste lo tipeado en la serie actual antes de cambiar.
+                await persistActiveSet();
                 setActiveSet(i);
                 setField('weight');
                 setBuffer(null);
