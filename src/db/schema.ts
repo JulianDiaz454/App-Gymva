@@ -102,6 +102,19 @@ export const weekAssignments = sqliteTable('week_assignments', {
     .default(sql`(unixepoch() * 1000)`),
 });
 
+// ── Override de día (solo para una fecha concreta) ─────────
+// Permite "hoy hago el día de [otro día] de mi misma rutina" sin tocar la
+// plantilla ni la asignación semanal. La clave es la fecha (YYYY-MM-DD).
+export const dayOverrides = sqliteTable('day_overrides', {
+  date: text('date').primaryKey(),
+  routineDayId: integer('routine_day_id')
+    .notNull()
+    .references(() => routineDays.id, { onDelete: 'cascade' }),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+});
+
 // ── 3.5 Sesiones (lo REALIZADO) ────────────────────────────
 export const sessions = sqliteTable(
   'sessions',
@@ -226,6 +239,7 @@ export type NewRoutineDay = typeof routineDays.$inferInsert;
 export type RoutineExercise = typeof routineExercises.$inferSelect;
 export type NewRoutineExercise = typeof routineExercises.$inferInsert;
 export type WeekAssignment = typeof weekAssignments.$inferSelect;
+export type DayOverride = typeof dayOverrides.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type NewSession = typeof sessions.$inferInsert;
 export type SessionExercise = typeof sessionExercises.$inferSelect;

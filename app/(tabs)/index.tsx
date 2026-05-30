@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { ChevronIcon, ClockIcon, CheckIcon } from '@/components/AppIcons';
+import { BottomSheet } from '@/components/BottomSheet';
 import { Chip } from '@/components/Chip';
 import { EmptyState } from '@/components/EmptyState';
 import { ExerciseIcon } from '@/components/ExerciseIcon';
@@ -12,13 +13,17 @@ import { Header } from '@/components/Header';
 import { Screen } from '@/components/Screen';
 import { StaggerItem } from '@/components/StaggerItem';
 import { Text } from '@/components/Text';
+import { toast } from '@/components/Toast';
 import { listExercisesIncludingArchived } from '@/db/queries/exercises';
+import { clearDayOverride, setDayOverride, type RoutineFull } from '@/db/queries/routines';
 import { createSession } from '@/db/queries/sessions';
 import type { Exercise } from '@/db/schema';
 import { getTodayState, mergeSessionBlocks, type MergedBlock, type TodayState } from '@/domain/today';
 import { colors, radii, space } from '@/theme/tokens';
 import { formatLongDate } from '@/utils/date';
 import { formatNumber } from '@/utils/format';
+
+const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
 export default function TodayScreen() {
   const [state, setState] = useState<TodayState | null>(null);
@@ -97,6 +102,17 @@ export default function TodayScreen() {
             </View>
           }
         />
+        {/* Aunque hoy sea descanso, permitir adelantar el día de otro día. */}
+        {state.routine ? (
+          <DayOverrideControl
+            routine={state.routine}
+            date={state.date}
+            currentDayId={state.routineDayId}
+            isOverridden={state.isDayOverridden}
+            canChange={!state.session}
+            onChanged={load}
+          />
+        ) : null}
       </Screen>
     );
   }
@@ -121,6 +137,17 @@ export default function TodayScreen() {
           <Text variant="caption" tone="secondary">{total} ejercicios</Text>
         </View>
       </View>
+
+      {state.routine ? (
+        <DayOverrideControl
+          routine={state.routine}
+          date={state.date}
+          currentDayId={state.routineDayId}
+          isOverridden={state.isDayOverridden}
+          canChange={!state.session}
+          onChanged={load}
+        />
+      ) : null}
 
       {/* Progress strip */}
       <View style={{ paddingHorizontal: space.xl, paddingTop: 16 }}>
@@ -233,6 +260,95 @@ export default function TodayScreen() {
   );
 }
 
+/**
+ * F2 — control para hacer hoy el día de otro día de la rutina. Solo se permite
+ * cambiar mientras no se haya iniciado la sesión de hoy (`canChange`); una vez
+ * empezada, se muestra deshabilitado.
+ */
+function DayOverrideControl({
+  routine,
+  date,
+  currentDayId,
+  isOverridden,
+  canChange,
+  onChanged,
+}: {
+  routine: RoutineFull;
+  date: string;
+  currentDayId: number | null;
+  isOverridden: boolean;
+  canChange: boolean;
+  onChanged: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  if (routine.days.length === 0) return null;
+
+  const pick = async (routineDayId: number) => {
+    setOpen(false);
+    const r = await setDayOverride(date, routineDayId);
+    if (!r.ok) {
+      toast.error(r.errors._form ?? 'No se pudo cambiar el día');
+      return;
+    }
+    toast.success('Día actualizado para hoy');
+    onChanged();
+  };
+
+  const reset = async () => {
+    setOpen(false);
+    const r = await clearDayOverride(date);
+    if (!r.ok) {
+      toast.error(r.errors._form ?? 'No se pudo restablecer');
+      return;
+    }
+    toast.info('Se restableció el día normal');
+    onChanged();
+  };
+
+  return (
+    <View style={{ paddingHorizontal: space.xl, paddingTop: 10 }}>
+      <Pressable
+        onPress={() => canChange && setOpen(true)}
+        style={[styles.changeDay, !canChange && { opacity: 0.45 }]}
+      >
+        <Text variant="caption" tone="secondary" style={{ fontWeight: '600' }}>
+          {canChange ? 'Cambiar día de hoy' : 'Sesión iniciada — no se puede cambiar el día'}
+        </Text>
+        {canChange ? <ChevronIcon size={12} color={colors.textMut} dir="right" /> : null}
+      </Pressable>
+
+      <BottomSheet visible={open} onClose={() => setOpen(false)} title="¿Qué día harás hoy?" tall>
+        <View style={{ gap: 8, paddingBottom: 8 }}>
+          {isOverridden ? (
+            <Pressable onPress={reset} style={styles.dayPickRow}>
+              <Text variant="bodyStrong">Día normal de hoy</Text>
+              <Text variant="micro" tone="muted">Quitar el cambio</Text>
+            </Pressable>
+          ) : null}
+          {routine.days.map((d) => (
+            <Pressable
+              key={d.id}
+              onPress={() => pick(d.id)}
+              style={[
+                styles.dayPickRow,
+                d.id === currentDayId && { borderColor: colors.text, borderWidth: 1 },
+              ]}
+            >
+              <View style={{ flex: 1 }}>
+                <Text variant="bodyStrong">{d.label ?? DAY_NAMES[d.dayOfWeek] ?? 'Día'}</Text>
+                <Text variant="micro" tone="muted">
+                  {DAY_NAMES[d.dayOfWeek] ?? '—'} · {d.exercises.length} ejercicios
+                </Text>
+              </View>
+              {d.id === currentDayId ? <CheckIcon size={15} color={colors.ok} /> : null}
+            </Pressable>
+          ))}
+        </View>
+      </BottomSheet>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   progressTrack: {
     height: 6,
@@ -252,6 +368,25 @@ const styles = StyleSheet.create({
     padding: 14,
     backgroundColor: colors.surface,
     borderRadius: 20,
+  },
+  changeDay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 40,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surface,
+  },
+  dayPickRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    borderRadius: radii.sm,
+    paddingHorizontal: 16,
+    minHeight: 56,
+    paddingVertical: 10,
   },
   doneBadge: {
     width: 30,

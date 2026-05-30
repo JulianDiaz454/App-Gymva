@@ -7,6 +7,7 @@ import { and, asc, eq } from 'drizzle-orm';
 
 import { db } from '@/db/client';
 import {
+  dayOverrides,
   routineDays,
   routineExercises,
   routines,
@@ -320,4 +321,33 @@ export async function setWeekAssignment(
 export async function listWeekAssignments(): Promise<Array<{ weekStart: string; routineId: number }>> {
   const rows = await db.select().from(weekAssignments);
   return rows.map((r) => ({ weekStart: r.weekStart, routineId: r.routineId }));
+}
+
+// ── Override de día (por fecha) ─────────────────────────────
+export async function getDayOverride(date: string): Promise<number | null> {
+  const rows = await db
+    .select()
+    .from(dayOverrides)
+    .where(eq(dayOverrides.date, date))
+    .limit(1);
+  return rows[0]?.routineDayId ?? null;
+}
+
+export async function setDayOverride(date: string, routineDayId: number): Promise<MutationResult> {
+  return runMutation(async () => {
+    const existing = await db
+      .select()
+      .from(dayOverrides)
+      .where(eq(dayOverrides.date, date))
+      .limit(1);
+    if (existing[0]) {
+      await db.update(dayOverrides).set({ routineDayId }).where(eq(dayOverrides.date, date));
+    } else {
+      await db.insert(dayOverrides).values({ date, routineDayId });
+    }
+  });
+}
+
+export async function clearDayOverride(date: string): Promise<MutationResult> {
+  return runMutation(() => db.delete(dayOverrides).where(eq(dayOverrides.date, date)));
 }

@@ -61,6 +61,12 @@ const STATEMENTS: string[] = [
     created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
   );`,
 
+  `CREATE TABLE IF NOT EXISTS day_overrides (
+    date TEXT PRIMARY KEY,
+    routine_day_id INTEGER NOT NULL REFERENCES routine_days(id) ON DELETE CASCADE,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+  );`,
+
   `CREATE TABLE IF NOT EXISTS sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     date TEXT NOT NULL,

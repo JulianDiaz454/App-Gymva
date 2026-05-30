@@ -7,6 +7,7 @@ import {
   type SessionFull,
 } from '@/db/queries/sessions';
 import {
+  getDayOverride,
   getRoutineFull,
   getWeekAssignment,
   type RoutineFull,
@@ -35,6 +36,8 @@ export interface TodayState {
   routineDayLabel: string | null;
   planned: TodayPlanBlock[];
   session: SessionFull | null;
+  /** El día mostrado proviene de un override manual (no del día de la semana). */
+  isDayOverridden: boolean;
 }
 
 export async function getTodayState(): Promise<TodayState> {
@@ -43,7 +46,23 @@ export async function getTodayState(): Promise<TodayState> {
   const routineId = await getWeekAssignment(ws);
   const routine = routineId ? await getRoutineFull(routineId) : null;
   const dow = isoDayOfWeek(new Date());
-  const day = routine?.days.find((d) => d.dayOfWeek === dow) ?? null;
+
+  // F2 — si hay override para hoy, usamos ese día de la rutina; si no, el día
+  // natural de la semana. Si el override apunta a un día ya borrado, caemos al
+  // natural.
+  const overrideDayId = await getDayOverride(date);
+  let day = null as RoutineFull['days'][number] | null;
+  let isDayOverridden = false;
+  if (routine) {
+    if (overrideDayId != null) {
+      const od = routine.days.find((d) => d.id === overrideDayId) ?? null;
+      if (od) {
+        day = od;
+        isDayOverridden = true;
+      }
+    }
+    if (!day) day = routine.days.find((d) => d.dayOfWeek === dow) ?? null;
+  }
 
   const planned: TodayPlanBlock[] =
     day?.exercises.map((re) => ({
@@ -69,6 +88,7 @@ export async function getTodayState(): Promise<TodayState> {
     routineDayLabel: day?.label ?? null,
     planned,
     session,
+    isDayOverridden,
   };
 }
 
